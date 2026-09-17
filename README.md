@@ -16,7 +16,7 @@ It's a static site with no build step. Open `index.html` directly, or serve the 
 npx serve .
 ```
 
-Deploy on Cloudflare Pages (or any static host) with the repo root as the output directory.
+Deploy on Cloudflare Workers (static assets): connect the repo under Workers & Pages, leave the build command empty, and use `npx wrangler deploy` as the deploy command. Or run that command locally from the repo folder.
 
 ## Files
 
