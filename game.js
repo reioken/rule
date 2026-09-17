@@ -35,14 +35,23 @@
   let toastTimer;
   function toast(msg, iconName) {
     const t = $('toast');
+    const bar = $('probeBar');
+    /* The bar is in flow now, so anchor the toast to its top edge instead of a fixed offset. */
+    t.style.bottom = bar.hidden ? '24px' : `${Math.round(window.innerHeight - bar.querySelector('.probe-inner').getBoundingClientRect().top + 10)}px`;
     t.innerHTML = (iconName ? I.icon(iconName) : '') + `<span>${msg}</span>`;
     t.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => t.classList.remove('show'), 1600);
   }
   const tileHtml = (item) => `<div class="tile">${domain().render(item)}</div>`;
-  const scoreLabel = (d) => d <= -2 ? 'Eagle' : d === -1 ? 'Birdie' : d === 0 ? 'Par' : d === 1 ? 'Bogey' : d === 2 ? 'Double bogey' : 'Over par';
-  const scoreStr = (d) => d === 0 ? 'Par' : d > 0 ? `+${d}` : `−${Math.abs(d)}`;
+  /* Stars out of three: inside the rule's target is three, within two more is two,
+     solving it at all is one, giving up is none. During play it reads as "if you solved it now". */
+  function stars() {
+    if (S.result === 'gaveup') return 0;
+    const par = rule().par;
+    return S.strokes <= par ? 3 : S.strokes <= par + 2 ? 2 : 1;
+  }
+  const starRow = (n) => `<span class="stars">${[0, 1, 2].map((i) => I.icon('star', i < n ? 'star' : 'star dim')).join('')}</span>`;
   function fmtDate(day) {
     return new Date(E.LAUNCH_UTC + day * 86400000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
   }
@@ -68,7 +77,13 @@
       gate.appendChild(el);
     }
     const n = tests().length;
-    $('strokes').innerHTML = `<b>${S.strokes}</b> ${S.strokes === 1 ? 'test' : 'tests'} · par ${rule().par}`;
+    const got = stars();
+    const par = rule().par;
+    const left = got === 3 ? par - S.strokes : par + 2 - S.strokes;
+    const goal = got === 1 ? '1 star'
+      : left === 0 ? `last one for ${got} stars`
+      : `<b>${left}</b> left for ${got} stars`;
+    $('strokes').innerHTML = `${starRow(got)}<span><b>${S.strokes}</b> ${S.strokes === 1 ? 'test' : 'tests'} · ${goal}</span>`;
     $('nodeSub').textContent = n === 0 ? (domain().input === 'text' ? `Try any ${domain().noun} below` : 'Build a shape below') : 'Try another one';
   }
 
@@ -155,20 +170,18 @@
     showView();
     const r = rule();
     const solved = S.result === 'solved';
-    const diff = S.strokes - r.par;
+    const got = stars();
     const big = $('doneScore');
     big.classList.remove('good', 'bad');
+    big.innerHTML = starRow(got);
+    big.classList.add(got >= 2 ? 'good' : 'bad');
     if (solved) {
       $('doneEyebrow').textContent = 'Solved';
-      big.textContent = scoreStr(diff);
-      big.classList.add(diff > 0 ? 'bad' : 'good');
       const t = `${S.strokes} ${S.strokes === 1 ? 'test' : 'tests'}`;
-      $('doneSub').textContent = diff === 0 ? `${t}, exactly par` : `${scoreLabel(diff)} · ${t}, ${Math.abs(diff)} ${diff < 0 ? 'under' : 'over'} par`;
+      $('doneSub').textContent = `${got === 3 ? 'Brilliant' : got === 2 ? 'Great' : 'Solved'} · ${t}`;
     } else {
       $('doneEyebrow').textContent = 'Revealed';
-      big.textContent = '—';
-      big.classList.add('bad');
-      $('doneSub').textContent = 'No score today. Tomorrow is a new rule.';
+      $('doneSub').textContent = 'No stars today. Tomorrow is a new rule.';
     }
     $('doneRule').textContent = r.rule;
     $('doneDetail').textContent = r.detail;
@@ -180,16 +193,17 @@
     if (falseOut !== null) br.push(`<span class="breaker in">${tileHtml(falseOut)}<small>in</small></span>`);
     $('doneBreakers').innerHTML = br.join('');
     $('shareText').textContent = shareText();
-    $('btnPractice').querySelector('span').textContent = S.mode === 'daily' ? 'Practice round' : 'Another practice round';
+    $('btnPractice').querySelector('span').textContent = S.mode === 'daily' ? 'Practice' : 'Practice again';
     tickCountdown();
   }
 
   function shareText() {
     const head = S.mode === 'daily' ? `Rule #${S.day + 1} · ${domain().name}` : `Rule practice · ${domain().name}`;
-    const score = S.result === 'solved' ? scoreStr(S.strokes - rule().par) : '🏳️';
+    const got = stars();
+    const score = '★'.repeat(got) + '☆'.repeat(3 - got);
     const probes = tests().map((p) => (p.in ? '🟩' : '⬛')).join('') || '·';
     const prove = '❌'.repeat(S.proveFails) + (S.result === 'solved' ? '✅' : '');
-    const lines = [`${head} · ${score}`, `${probes} ${prove}`.trim()];
+    const lines = [`${head} ${score}`, `${probes} ${prove}`.trim()];
     if (SHARE_URL) lines.push(SHARE_URL);
     return lines.join('\n');
   }
@@ -206,7 +220,15 @@
   }
   setInterval(tickCountdown, 30000);
 
+  function renderStreak() {
+    const st = { ...emptyStats, ...store.get(STATS_KEY, {}) };
+    const el = $('streakBadge');
+    el.hidden = !(st.streak >= 2);
+    el.innerHTML = el.hidden ? '' : `${I.icon('flame')}<span>${st.streak}</span>`;
+  }
+
   function render(latestItem) {
+    renderStreak();
     if (S.phase === 'play') renderPlay(latestItem);
     else if (S.phase === 'prove') renderProve();
     else renderDone();
@@ -230,8 +252,9 @@
     v.innerHTML = `${domain().id === 'shapes' ? domain().render(item) : `<span>${domain().label(item)}</span>`}<span>is ${isIn ? 'IN' : 'OUT'}</span>`;
     void v.offsetWidth;
     v.classList.add('show');
-    const latest = document.querySelector('.grow.latest');
-    if (latest) latest.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' });
+    /* Bring the bar, and so the newest row just above it, into view. The bar is sticky, so once it is
+       pinned scrollIntoView on it is a no-op; scrolling to the page end is the same target that works. */
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: reduceMotion ? 'auto' : 'smooth' });
   }
 
   function checkProve() {
@@ -280,7 +303,7 @@
   }
 
   /* ---------- stats ---------- */
-  const emptyStats = { played: 0, solved: 0, streak: 0, best: 0, lastDay: null, overPar: 0, tests: 0, testsOut: 0, domains: {} };
+  const emptyStats = { played: 0, solved: 0, streak: 0, best: 0, lastDay: null, stars: 0, tests: 0, testsOut: 0, domains: {} };
   function record() {
     if (S.mode !== 'daily' || S.recorded) return;
     S.recorded = true;
@@ -292,9 +315,9 @@
     const t = tests();
     st.tests += t.length;
     st.testsOut += t.filter((p) => !p.in).length;
+    st.stars += stars();
     if (S.result === 'solved') {
       st.solved += 1; dd.solved += 1;
-      st.overPar += S.strokes - rule().par;
       st.streak = st.lastDay === S.day - 1 ? st.streak + 1 : 1;
       st.best = Math.max(st.best, st.streak);
     } else st.streak = 0;
@@ -305,10 +328,9 @@
   function renderStats() {
     const st = { ...emptyStats, ...store.get(STATS_KEY, {}) };
     const pct = st.played ? Math.round((100 * st.solved) / st.played) : 0;
-    const avg = st.solved ? st.overPar / st.solved : 0;
-    const avgStr = st.solved ? (avg > 0 ? `+${avg.toFixed(1)}` : avg < 0 ? `−${Math.abs(avg).toFixed(1)}` : 'Par') : '–';
     const fals = st.tests ? Math.round((100 * st.testsOut) / st.tests) : 0;
-    const tiles = [[st.played, 'Played'], [`${pct}%`, 'Solved'], [st.streak, 'Streak'], [st.best, 'Best streak'], [avgStr, 'Avg vs par'], [st.tests ? `${fals}%` : '–', 'Out tests']];
+    const tiles = [[st.played, 'Played'], [`${pct}%`, 'Solved'], [st.streak, 'Streak'], [st.best, 'Best streak'],
+      [`${I.icon('star', 'star')}${st.stars}`, 'Stars'], [st.tests ? `${fals}%` : '–', 'Out tests']];
     $('statTiles').innerHTML = tiles.map(([v, l]) => `<div class="tile-stat"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
     $('statDomains').innerHTML = D.list.map((d) => { const x = (st.domains || {})[d.id] || { played: 0, solved: 0 }; return `<div><span>${d.name}</span><b>${x.solved} / ${x.played}</b></div>`; }).join('');
     $('statNote').innerHTML = st.tests

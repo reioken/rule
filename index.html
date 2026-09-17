@@ -19,6 +19,7 @@
       <div class="brand">
         <h1 class="wordmark">Rule<span class="dot">.</span></h1>
         <span class="meta" id="meta">#1</span>
+        <span class="streak" id="streakBadge" hidden></span>
       </div>
       <div class="actions">
         <button class="iconbtn" id="btnStats" aria-label="Your stats" data-icon="chart-bar"></button>
@@ -41,6 +42,37 @@
       </div>
     </section>
 
+    <!-- probe bar (play only) -->
+    <div class="probe" id="probeBar">
+      <div class="probe-inner">
+        <div class="verdict" id="verdict"></div>
+
+        <form id="probeForm" autocomplete="off">
+          <input id="probeInput" maxlength="12" placeholder="Try any number" aria-label="Item to test">
+          <button class="btn" type="submit" data-icon="flask"><span>Test</span></button>
+        </form>
+
+        <div id="builder" class="builder" hidden>
+          <div class="builder-preview" id="builderPreview"></div>
+          <div class="builder-rows">
+            <div class="seg-row" id="pickSides"></div>
+            <div class="seg-row" id="pickColor"></div>
+            <div class="seg-row" id="pickFill"></div>
+            <div class="seg-row" id="pickSize"></div>
+          </div>
+          <button class="btn" type="button" id="btnBuildTest" data-icon="flask"><span>Test</span></button>
+        </div>
+
+        <div class="probe-meta">
+          <span class="strokes" id="strokes"></span>
+          <div class="buttons">
+            <button class="btn ghost" id="btnGiveUp" type="button" data-icon="flag"><span>Give up</span></button>
+            <button class="btn primary" id="btnProve" type="button" data-icon="lightbulb"><span>I've got it</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- PROVE -->
     <section id="viewProve" hidden>
       <div class="prove-head">
@@ -60,8 +92,8 @@
       <div class="result">
         <div class="score-card">
           <div class="eyebrow" id="doneEyebrow">Solved</div>
-          <div class="big" id="doneScore">−1</div>
-          <div class="sub" id="doneSub">1 under par</div>
+          <div class="big" id="doneScore"></div>
+          <div class="sub" id="doneSub"></div>
         </div>
         <div class="info-card rule">
           <div class="eyebrow">The rule</div>
@@ -76,49 +108,18 @@
         <pre class="share" id="shareText"></pre>
         <div class="row">
           <button class="btn primary" id="btnCopy" data-icon="copy"><span>Copy result</span></button>
-          <button class="btn" id="btnPractice" data-icon="shuffle"><span>Practice round</span></button>
+          <button class="btn" id="btnPractice" data-icon="shuffle"><span>Practice</span></button>
         </div>
         <p class="next" id="nextIn"></p>
       </div>
     </section>
   </div>
 
-  <!-- probe bar (play only) -->
-  <div class="probe" id="probeBar">
-    <div class="probe-inner">
-      <div class="verdict" id="verdict"></div>
-
-      <form id="probeForm" autocomplete="off">
-        <input id="probeInput" maxlength="12" placeholder="Try any number" aria-label="Item to test">
-        <button class="btn" type="submit" data-icon="flask"><span>Test</span></button>
-      </form>
-
-      <div id="builder" class="builder" hidden>
-        <div class="builder-preview" id="builderPreview"></div>
-        <div class="builder-rows">
-          <div class="seg-row" id="pickSides"></div>
-          <div class="seg-row" id="pickColor"></div>
-          <div class="seg-row" id="pickFill"></div>
-          <div class="seg-row" id="pickSize"></div>
-        </div>
-        <button class="btn" type="button" id="btnBuildTest" data-icon="flask"><span>Test</span></button>
-      </div>
-
-      <div class="probe-meta">
-        <span class="strokes" id="strokes"></span>
-        <div class="buttons">
-          <button class="btn ghost" id="btnGiveUp" type="button" data-icon="flag"><span>Give up</span></button>
-          <button class="btn primary" id="btnProve" type="button" data-icon="lightbulb"><span>I've got it</span></button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <dialog id="dlgHelp">
     <h2>How to play</h2>
     <div class="steps">
       <div class="step"><div class="n a">1</div><div><h3>Look</h3><p>Eight things are already sorted into In and Out. A secret rule decides which is which.</p></div></div>
-      <div class="step"><div class="n b">2</div><div><h3>Test</h3><p>Type anything you like and see whether it's in or out. Each test costs one point.</p></div></div>
+      <div class="step"><div class="n b">2</div><div><h3>Test</h3><p>Type anything you like and see whether it's in or out. The fewer tests you need, the more stars you get.</p></div></div>
       <div class="step"><div class="n c">3</div><div><h3>Prove</h3><p>Think you've got it? Sort six new things. Get all six right and you're done.</p></div></div>
     </div>
     <div class="tip"><b>Tip.</b> The first rule that comes to mind is usually wrong. Test things you think are <b>out</b>.</div>
