@@ -151,7 +151,7 @@ function renderPlay(latestItem) {
   $('lead').innerHTML = domain().lead;
   renderInput();
   renderBoard(latestItem);
-  $('btnGiveUp').querySelector('span').textContent = 'Give up';
+  resetGiveUp();
 }
 
 let answers = {};
@@ -330,21 +330,41 @@ async function checkProve() {
   }
 }
 
-let giveUpArmed = null;
+let giveUpArmed = false;
+let giveUpTimer = null;
+let giveUpBusy = false;
+function resetGiveUp() {
+  giveUpArmed = false;
+  giveUpBusy = false;
+  clearTimeout(giveUpTimer);
+  const btn = $('btnGiveUp');
+  btn.disabled = false;
+  btn.querySelector('span').textContent = 'Give up';
+}
 async function giveUp() {
-  const span = $('btnGiveUp').querySelector('span');
+  if (giveUpBusy) return;
+  const btn = $('btnGiveUp');
+  const span = btn.querySelector('span');
   if (!giveUpArmed) {
     span.textContent = 'Really? Show me';
-    giveUpArmed = setTimeout(() => { giveUpArmed = null; span.textContent = 'Give up'; }, 3000);
+    giveUpArmed = true;
+    clearTimeout(giveUpTimer);
+    giveUpTimer = setTimeout(resetGiveUp, 8000);
     return;
   }
-  clearTimeout(giveUpArmed); giveUpArmed = null;
+  clearTimeout(giveUpTimer);
+  giveUpBusy = true;
+  btn.disabled = true;
   try {
     S.reveal = await api('/api/reveal', roundBody());
   } catch {
+    giveUpBusy = false;
+    btn.disabled = false;
     toast('Could not reveal');
     return;
   }
+  giveUpArmed = false;
+  giveUpBusy = false;
   S.result = 'gaveup';
   S.phase = 'done';
   record(); save(); render();
