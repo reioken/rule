@@ -35,9 +35,6 @@
   let toastTimer;
   function toast(msg, iconName) {
     const t = $('toast');
-    const bar = $('probeBar');
-    /* The bar is in flow now, so anchor the toast to its top edge instead of a fixed offset. */
-    t.style.bottom = bar.hidden ? '24px' : `${Math.round(window.innerHeight - bar.querySelector('.probe-inner').getBoundingClientRect().top + 10)}px`;
     t.innerHTML = (iconName ? I.icon(iconName) : '') + `<span>${msg}</span>`;
     t.classList.add('show');
     clearTimeout(toastTimer);
@@ -66,17 +63,25 @@
     $('meta').textContent = S.mode === 'daily' ? `#${S.day + 1} · ${domain().name}` : `Practice · ${domain().name}`;
   }
 
+  /* Chips fill each bin from the top left, givens first and then everything the player put there.
+     Returns the newest chip so the caller can bring it into view. */
   function renderBoard(latestItem) {
-    const gate = $('gate');
-    gate.replaceChildren();
     const rows = [...evidence().map((e) => ({ ...e, kind: 'given' })), ...S.log];
-    for (const r of rows) {
-      const el = document.createElement('div');
-      el.className = `grow ${r.in ? 'in' : 'out'} ${r.kind === 'given' ? 'given' : 'mine'}${latestItem !== undefined && r.item === latestItem ? ' latest' : ''}`;
-      el.innerHTML = `${tileHtml(r.item)}<i class="tick"></i>`;
-      gate.appendChild(el);
+    let latestEl = null;
+    for (const [bin, wantIn] of [[$('binIn'), true], [$('binOut'), false]]) {
+      const chips = bin.querySelector('.chips');
+      chips.replaceChildren();
+      for (const r of rows) {
+        if (r.in !== wantIn) continue;
+        const mine = r.kind !== 'given';
+        const latest = latestItem !== undefined && r.item === latestItem;
+        const el = document.createElement('div');
+        el.className = `chip${mine ? ' mine' : ''}${latest ? ' latest' : ''}`;
+        el.innerHTML = domain().render(r.item, 36);
+        chips.appendChild(el);
+        if (latest) latestEl = el;
+      }
     }
-    const n = tests().length;
     const got = stars();
     const par = rule().par;
     const left = got === 3 ? par - S.strokes : par + 2 - S.strokes;
@@ -84,7 +89,7 @@
       : left === 0 ? `last one for ${got} stars`
       : `<b>${left}</b> left for ${got} stars`;
     $('strokes').innerHTML = `${starRow(got)}<span><b>${S.strokes}</b> ${S.strokes === 1 ? 'test' : 'tests'} · ${goal}</span>`;
-    $('nodeSub').textContent = n === 0 ? (domain().input === 'text' ? `Try any ${domain().noun} below` : 'Build a shape below') : 'Try another one';
+    return latestEl;
   }
 
   function renderInput() {
@@ -241,20 +246,14 @@
     S.strokes += 1;
     S.log.push({ item, in: isIn, kind: 'test' });
     save();
-    renderBoard(item);
-    const node = $('node');
-    node.classList.remove('hit-in', 'hit-out');
-    void node.offsetWidth;
-    node.classList.add(isIn ? 'hit-in' : 'hit-out');
-    setTimeout(() => node.classList.remove('hit-in', 'hit-out'), 700);
+    const chip = renderBoard(item);
     const v = $('verdict');
     v.className = `verdict ${isIn ? 'in' : 'out'}`;
     v.innerHTML = `${domain().id === 'shapes' ? domain().render(item) : `<span>${domain().label(item)}</span>`}<span>is ${isIn ? 'IN' : 'OUT'}</span>`;
     void v.offsetWidth;
     v.classList.add('show');
-    /* Bring the bar, and so the newest row just above it, into view. The bar is sticky, so once it is
-       pinned scrollIntoView on it is a no-op; scrolling to the page end is the same target that works. */
-    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: reduceMotion ? 'auto' : 'smooth' });
+    /* Only scroll if the new chip fell below the fold; the bins grow downwards. */
+    if (chip) chip.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' });
   }
 
   function checkProve() {

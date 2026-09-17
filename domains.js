@@ -129,7 +129,7 @@
     SIDES, COLORS, FILLS, SIZES, SHAPE_NAMES, HEX, svg: shapeSvg,
     pool() { const a = []; for (const s of SIDES) for (const c of COLORS) for (const f of FILLS) for (const z of SIZES) a.push(`${s}:${c}:${f}:${z}`); return a; },
     parse(raw) { return { item: raw }; },
-    render(k) { return shapeSvg(k, 44); },
+    render(k, size = 44) { return shapeSvg(k, size); },
     label(k) { const { sides, color, fill, size } = shape(k); return `${size} ${fill} ${color} ${SHAPE_NAMES[sides]}`; },
     rules: [
       { id: 'odd-sides', rule: 'An odd number of sides', detail: 'Triangles, pentagons and heptagons. Circles have no sides.', test: (k) => [3, 5, 7].includes(sidesOf(k)), trap: filled, trapName: 'filled shapes', par: 4 },

@@ -30,48 +30,48 @@
     <!-- PLAY -->
     <section id="viewPlay">
       <p class="lead" id="lead"></p>
-      <div class="gate-head">
-        <div class="gh in"><b>In</b><span>follows the rule</span></div>
-        <div class="gh out"><b>Out</b><span>doesn't</span></div>
+
+      <!-- probe bar (play only) -->
+      <div class="probe" id="probeBar">
+        <div class="probe-inner">
+          <form id="probeForm" autocomplete="off">
+            <input id="probeInput" maxlength="12" placeholder="Try any number" aria-label="Item to test">
+            <button class="btn" type="submit" data-icon="flask"><span>Test</span></button>
+          </form>
+
+          <div id="builder" class="builder" hidden>
+            <div class="builder-preview" id="builderPreview"></div>
+            <div class="builder-rows">
+              <div class="seg-row" id="pickSides"></div>
+              <div class="seg-row" id="pickColor"></div>
+              <div class="seg-row" id="pickFill"></div>
+              <div class="seg-row" id="pickSize"></div>
+            </div>
+            <button class="btn" type="button" id="btnBuildTest" data-icon="flask"><span>Test</span></button>
+          </div>
+
+          <div class="probe-meta">
+            <span class="strokes" id="strokes"></span>
+            <div class="buttons">
+              <button class="btn ghost" id="btnGiveUp" type="button" data-icon="flag"><span>Give up</span></button>
+              <button class="btn primary" id="btnProve" type="button" data-icon="lightbulb"><span>I've got it</span></button>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="gate" id="gate"></div>
-      <div class="node" id="node">
-        <span class="orb"></span>
-        <span class="node-label">Your turn</span>
-        <span class="node-sub" id="nodeSub">Try any number below</span>
+
+      <div class="bins" id="bins">
+        <div class="verdict" id="verdict"></div>
+        <div class="bin in" id="binIn">
+          <div class="bin-head"><b>In</b><span>follows the rule</span></div>
+          <div class="chips"></div>
+        </div>
+        <div class="bin out" id="binOut">
+          <div class="bin-head"><b>Out</b><span>doesn't</span></div>
+          <div class="chips"></div>
+        </div>
       </div>
     </section>
-
-    <!-- probe bar (play only) -->
-    <div class="probe" id="probeBar">
-      <div class="probe-inner">
-        <div class="verdict" id="verdict"></div>
-
-        <form id="probeForm" autocomplete="off">
-          <input id="probeInput" maxlength="12" placeholder="Try any number" aria-label="Item to test">
-          <button class="btn" type="submit" data-icon="flask"><span>Test</span></button>
-        </form>
-
-        <div id="builder" class="builder" hidden>
-          <div class="builder-preview" id="builderPreview"></div>
-          <div class="builder-rows">
-            <div class="seg-row" id="pickSides"></div>
-            <div class="seg-row" id="pickColor"></div>
-            <div class="seg-row" id="pickFill"></div>
-            <div class="seg-row" id="pickSize"></div>
-          </div>
-          <button class="btn" type="button" id="btnBuildTest" data-icon="flask"><span>Test</span></button>
-        </div>
-
-        <div class="probe-meta">
-          <span class="strokes" id="strokes"></span>
-          <div class="buttons">
-            <button class="btn ghost" id="btnGiveUp" type="button" data-icon="flag"><span>Give up</span></button>
-            <button class="btn primary" id="btnProve" type="button" data-icon="lightbulb"><span>I've got it</span></button>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <!-- PROVE -->
     <section id="viewProve" hidden>
