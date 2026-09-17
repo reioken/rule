@@ -24,16 +24,19 @@
     return shuffle([...agreeIn.map((x) => ({ item: x, in: true })), ...agreeOut.map((x) => ({ item: x, in: false }))], rng);
   }
 
-  /* Six items to prove yourself on; at least three split the rule from the trap. */
+  /* Six items to prove yourself on: four disagree with the trap where the pool allows (never fewer than
+     three), split evenly between the two trap directions, and the six answers are as near 3 In / 3 Out as possible. */
   function buildProve(domain, rule, used, rng) {
     const list = pool(domain, rule, rng).filter((x) => !used.has(x));
-    const disagree = list.filter((x) => rule.test(x) !== rule.trap(x));
-    const agree = list.filter((x) => rule.test(x) === rule.trap(x));
-    let picks = [...disagree.slice(0, 4), ...agree.slice(0, 2)];
-    let i = 2;
-    while (picks.length < 6 && i < agree.length) picks.push(agree[i++]);
-    let j = 4;
-    while (picks.length < 6 && j < disagree.length) picks.push(disagree[j++]);
+    const group = (isIn, splits) => list.filter((x) => rule.test(x) === isIn && (rule.test(x) !== rule.trap(x)) === splits);
+    const dIn = group(true, true), dOut = group(false, true), aIn = group(true, false), aOut = group(false, false);
+    const picks = [], take = (src) => (src.length ? (picks.push(src.shift()), true) : false);
+    for (let i = 0; i < 2; i++) { take(dIn); take(dOut); }                 // two per direction before a third
+    while (picks.length < 4 && take(dIn.length >= dOut.length ? dIn : dOut));
+    while (picks.length < 6) {
+      const inN = picks.filter((x) => rule.test(x)).length;                // top up whichever answer is behind
+      if (!(inN * 2 <= picks.length ? [aIn, dIn, aOut, dOut] : [aOut, dOut, aIn, dIn]).some(take)) break;
+    }
     return shuffle(picks.slice(0, 6), rng).map((x) => ({ item: x, in: rule.test(x) }));
   }
 

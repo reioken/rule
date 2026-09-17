@@ -18,6 +18,8 @@ It's a static site with no build step. Open `index.html` directly, or serve the 
 npx serve .
 ```
 
+`node scripts/check.js` audits every rule of every domain and the first year of daily boards, and exits non-zero if any board breaks a guarantee.
+
 Deploy on Cloudflare Workers (static assets): connect the repo under Workers & Pages, leave the build command empty, and use `npx wrangler deploy` as the deploy command. Or run that command locally from the repo folder.
 
 ## Files

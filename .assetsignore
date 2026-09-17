@@ -3,3 +3,4 @@
 .assetsignore
 README.md
 wrangler.toml
+scripts
