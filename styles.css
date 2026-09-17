@@ -89,6 +89,8 @@ body {
 }
 button, input { font: inherit; color: inherit; }
 button { cursor: pointer; }
+.ic { width: 18px; height: 18px; flex: none; --nucleo-stroke-width: 1.75; }
+.iconbtn .ic { width: 20px; height: 20px; }
 :focus-visible { outline: 3px solid var(--in); outline-offset: 2px; }
 h1, h2, h3 { margin: 0; font-family: var(--display); text-wrap: balance; }
 p { margin: 0; }
@@ -253,6 +255,7 @@ p { margin: 0; }
 .probe input:focus { border-color: var(--ink); outline: none; }
 .probe input::placeholder { font-family: var(--body); font-weight: 500; font-size: 1rem; color: var(--muted); }
 .btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   height: 52px;
   padding: 0 20px;
   border-radius: var(--radius-sm);
@@ -350,7 +353,8 @@ p { margin: 0; }
 .seg button[aria-pressed='true'].out { background: var(--out); color: #3a0410; }
 .pcard.right { border-color: var(--in); background: var(--in-soft); }
 .pcard.wrong { border-color: var(--out); background: var(--out-soft); animation: shake 0.4s; }
-.pcard .truth { font-size: 0.8rem; font-weight: 700; color: var(--out-ink); min-height: 1em; }
+.pcard .truth { display: inline-flex; align-items: center; gap: 4px; font-size: 0.8rem; font-weight: 700; color: var(--out-ink); min-height: 18px; }
+.pcard .truth .ic { width: 16px; height: 16px; }
 .pcard.right .truth { color: var(--in-ink); }
 @keyframes shake {
   20% { transform: translateX(-6px); } 40% { transform: translateX(6px); }
@@ -469,6 +473,7 @@ dialog .row { margin-top: 18px; }
 
 /* ---------- toast ---------- */
 .toast {
+  display: inline-flex; align-items: center; gap: 8px;
   position: fixed;
   left: 50%; top: 18px;
   transform: translateX(-50%);
@@ -486,6 +491,7 @@ dialog .row { margin-top: 18px; }
 
 @media (prefers-reduced-motion: reduce) {
   .chip, .verdict.show, .pcard.wrong { animation: none !important; }
+  .btn:active { transform: none; }
   .verdict.show { opacity: 1; }
   * { transition: none !important; }
 }

@@ -3,6 +3,7 @@
   const P = window.RulePuzzles;
   const $ = (id) => document.getElementById(id);
   const SHARE_URL = 'https://rule.dennis-bierreth.workers.dev';
+  const I = window.RuleIcons;
 
   /* ---------- storage (per-browser, best effort) ---------- */
   const store = {
@@ -34,9 +35,9 @@
   /* ---------- helpers ---------- */
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let toastTimer;
-  function toast(msg) {
+  function toast(msg, iconName) {
     const t = $('toast');
-    t.textContent = msg;
+    t.innerHTML = (iconName ? I.icon(iconName) : '') + `<span>${msg}</span>`;
     t.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => t.classList.remove('show'), 1600);
@@ -85,7 +86,7 @@
   function renderPlay(latestN) {
     showView();
     renderBoard(latestN);
-    $('btnGiveUp').textContent = 'Give up';
+    $('btnGiveUp').querySelector('span').textContent = 'Give up';
   }
 
   let answers = {};
@@ -155,7 +156,7 @@
       + `<div class="breakers">${chips.join('')}</div>`;
 
     $('shareText').textContent = shareText();
-    $('btnPractice').textContent = S.mode === 'daily' ? 'Practice round' : 'Another practice round';
+    $('btnPractice').querySelector('span').textContent = S.mode === 'daily' ? 'Practice round' : 'Another practice round';
     tickCountdown();
   }
 
@@ -217,7 +218,7 @@
       const ok = answers[n] === truth;
       right += ok ? 1 : 0;
       card.classList.add(ok ? 'right' : 'wrong');
-      card.querySelector('.truth').textContent = ok ? '✓' : `was ${truth ? 'in' : 'out'}`;
+      card.querySelector('.truth').innerHTML = ok ? I.icon('check') : `${I.icon('xmark')}<span>was ${truth ? 'in' : 'out'}</span>`;
       card.querySelectorAll('.seg button').forEach((b) => { b.disabled = true; });
     }
     if (right === currentProve.length) {
@@ -243,8 +244,8 @@
   let giveUpArmed = null;
   function giveUp() {
     if (!giveUpArmed) {
-      $('btnGiveUp').textContent = 'Really? Show me';
-      giveUpArmed = setTimeout(() => { giveUpArmed = null; $('btnGiveUp').textContent = 'Give up'; }, 3000);
+      $('btnGiveUp').querySelector('span').textContent = 'Really? Show me';
+      giveUpArmed = setTimeout(() => { giveUpArmed = null; $('btnGiveUp').querySelector('span').textContent = 'Give up'; }, 3000);
       return;
     }
     clearTimeout(giveUpArmed); giveUpArmed = null;
@@ -309,11 +310,11 @@
     const text = shareText();
     try {
       await navigator.clipboard.writeText(text);
-      toast('Copied');
+      toast('Copied', 'check');
     } catch {
       const ta = document.createElement('textarea');
       ta.value = text; document.body.appendChild(ta); ta.select();
-      try { document.execCommand('copy'); toast('Copied'); } catch { toast('Copy failed'); }
+      try { document.execCommand('copy'); toast('Copied', 'check'); } catch { toast('Copy failed', 'xmark'); }
       ta.remove();
     }
   });
@@ -329,6 +330,7 @@
   $('btnStatsClose').addEventListener('click', () => $('dlgStats').close());
 
   /* ---------- boot ---------- */
+  I.mount();
   const day = Math.max(0, P.dayIndex());
   const saved = store.get(`rule.day.${day}`, null);
   if (saved && saved.seed !== undefined) {

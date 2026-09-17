@@ -21,8 +21,8 @@
         <span class="meta" id="meta">#1</span>
       </div>
       <div class="actions">
-        <button class="iconbtn" id="btnStats" aria-label="Your stats">▮▮</button>
-        <button class="iconbtn" id="btnHelp" aria-label="How to play">?</button>
+        <button class="iconbtn" id="btnStats" aria-label="Your stats" data-icon="chart-bar"></button>
+        <button class="iconbtn" id="btnHelp" aria-label="How to play" data-icon="circle-question"></button>
       </div>
     </header>
 
@@ -48,8 +48,8 @@
       <div class="prove-grid" id="proveGrid"></div>
       <div class="prove-note" id="proveNote" hidden></div>
       <div class="row">
-        <button class="btn" id="btnBack">Keep testing</button>
-        <button class="btn primary" id="btnCheck" disabled>Check</button>
+        <button class="btn" id="btnBack" data-icon="arrow-left"><span>Keep testing</span></button>
+        <button class="btn primary" id="btnCheck" disabled data-icon="check"><span>Check</span></button>
       </div>
     </section>
 
@@ -72,8 +72,8 @@
         </div>
         <pre class="share" id="shareText"></pre>
         <div class="row">
-          <button class="btn primary" id="btnCopy">Copy result</button>
-          <button class="btn" id="btnPractice">Practice round</button>
+          <button class="btn primary" id="btnCopy" data-icon="copy"><span>Copy result</span></button>
+          <button class="btn" id="btnPractice" data-icon="shuffle"><span>Practice round</span></button>
         </div>
         <p class="next" id="nextIn"></p>
       </div>
@@ -86,13 +86,13 @@
       <div class="verdict" id="verdict"></div>
       <form id="probeForm" autocomplete="off">
         <input id="probeInput" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="Try any number" aria-label="Number to test">
-        <button class="btn" type="submit">Test</button>
+        <button class="btn" type="submit" data-icon="flask"><span>Test</span></button>
       </form>
       <div class="probe-meta">
         <span class="strokes" id="strokes"></span>
         <div class="buttons">
-          <button class="btn ghost" id="btnGiveUp" type="button">Give up</button>
-          <button class="btn primary" id="btnProve" type="button">I know it</button>
+          <button class="btn ghost" id="btnGiveUp" type="button" data-icon="flag"><span>Give up</span></button>
+          <button class="btn primary" id="btnProve" type="button" data-icon="lightbulb"><span>I know it</span></button>
         </div>
       </div>
     </div>
@@ -127,6 +127,7 @@
 
   <div class="toast" id="toast" role="status"></div>
 
+  <script src="icons.js"></script>
   <script src="puzzles.js"></script>
   <script src="game.js"></script>
 </body>
