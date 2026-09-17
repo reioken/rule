@@ -1,0 +1,10 @@
+{
+  "name": "rule",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node scripts/check.js",
+    "dev": "node scripts/dev.mjs",
+    "start": "node scripts/dev.mjs"
+  }
+}

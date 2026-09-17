@@ -1,6 +1,14 @@
 .git
 .gitignore
 .assetsignore
+.github
 README.md
 wrangler.toml
+package.json
+package-lock.json
 scripts
+api.js
+domains.js
+engine.js
+words.js
+worker.js
