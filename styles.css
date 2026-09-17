@@ -93,6 +93,7 @@ h1, h2, h3, p { margin: 0; }
   margin-inline: auto;
   padding-top: calc(12px + env(safe-area-inset-top, 0px));
   padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  container-type: inline-size;
 }
 
 .site-header {
@@ -110,9 +111,10 @@ h1, h2, h3, p { margin: 0; }
   grid-area: mark;
   font-family: var(--brand);
   font-weight: 800;
-  font-size: clamp(2.5rem, 12vw, 3.4rem);
+  font-size: clamp(2rem, 11.4cqi, 3.4rem);
   line-height: 0.88;
   letter-spacing: -0.07em;
+  white-space: nowrap;
 }
 .wordmark .dot { color: var(--in); }
 .puzzle-meta {
@@ -160,11 +162,13 @@ h1, h2, h3, p { margin: 0; }
     var(--group-line) border-box;
   border: 2px solid transparent;
   border-radius: var(--radius-panel);
-  padding: var(--space-2);
-  padding-bottom: var(--space-5);
+  padding: var(--space-2) var(--space-2) 28px;
   min-width: 0;
+  min-height: min-content;
+  height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: visible;
 }
 .group.in {
   --group-line: var(--in);
@@ -194,7 +198,8 @@ h1, h2, h3, p { margin: 0; }
 .seeds { flex: 0 0 auto; }
 .tested {
   margin-top: var(--space-2);
-  flex: 1 1 auto;
+  flex: 1 0 auto;
+  overflow: visible;
 }
 .tested:empty { display: none; }
 
@@ -290,15 +295,7 @@ h1, h2, h3, p { margin: 0; }
 .choice label.out:has(input:checked) { background: var(--out); color: var(--canvas); }
 .choice label:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
 
-.play-dock {
-  position: sticky;
-  bottom: 0;
-  z-index: 4;
-  margin-top: var(--space-3);
-  padding-top: 16px;
-  padding-bottom: 8px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--canvas) 0%, transparent) 0%, var(--canvas) 16px, var(--canvas) 100%);
-}
+.play-dock { margin-top: var(--space-3); min-width: 0; }
 .play-dock:not(:has(> :not([hidden]))) { display: none; }
 .status-row {
   display: flex; justify-content: space-between; gap: var(--space-3);
@@ -306,7 +303,7 @@ h1, h2, h3, p { margin: 0; }
 }
 .status-row p { font-variant-numeric: tabular-nums; }
 
-.test-panel, .prove-actions, .result-panel { margin-top: var(--space-3); display: grid; gap: var(--space-3); }
+.test-panel, .prove-actions, .result-panel { margin-top: var(--space-3); display: grid; gap: var(--space-3); min-width: 0; }
 .play-dock .test-panel,
 .play-dock .prove-actions { margin-top: var(--space-3); }
 .feedback { font-size: 15px; line-height: 21px; font-weight: 500; min-height: 21px; }
@@ -314,7 +311,7 @@ h1, h2, h3, p { margin: 0; }
 .feedback.in { color: var(--in); }
 .feedback.out { color: var(--out); }
 
-#probeForm { display: flex; gap: var(--space-2); }
+#probeForm { display: flex; gap: var(--space-2); min-width: 0; width: 100%; }
 #probeForm input {
   flex: 1; min-width: 0; height: var(--control-height);
   border-radius: var(--radius-token); border: 1px solid var(--line);
