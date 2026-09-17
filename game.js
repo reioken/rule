@@ -151,7 +151,10 @@ function renderPlay(latestItem) {
   $('lead').innerHTML = domain().lead;
   renderInput();
   renderBoard(latestItem);
-  resetGiveUp();
+  if (!giveUpArmed && !giveUpBusy) {
+    $('btnGiveUp').disabled = false;
+    $('btnGiveUp').querySelector('span').textContent = 'Give up';
+  }
 }
 
 let answers = {};
