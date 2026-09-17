@@ -1,7 +1,9 @@
 # Rule
 
-A daily deduction game. Eight numbers are already sorted into **In** and **Out** by a secret rule.
-Test your own numbers, then prove you know the rule by sorting six more.
+A daily deduction game. Eight things are already sorted into **In** and **Out** by a secret rule.
+Send your own through the gate, then prove you know the rule by sorting six more.
+
+Three domains take turns through the week: **numbers**, **words** and **shapes**.
 
 - One rule per day, the same for everyone.
 - Every test costs a point. Score is tests against par, golf style.
@@ -24,15 +26,20 @@ Deploy on Cloudflare Workers (static assets): connect the repo under Workers & P
 | --- | --- |
 | `index.html` | Page and the three views: play, prove, done |
 | `styles.css` | Visual system, light and dark |
-| `puzzles.js` | Rule library, trap rules, seeded board generator |
-| `game.js` | Game loop, scoring, share text, stats in localStorage |
+| `domains.js` | The three domains: item pool, renderer, input type, rule library with traps |
+| `words.js` | Word pool, 2,600 common English words |
+| `engine.js` | Seeded board generator, prove set, weekday schedule |
+| `icons.js` | The ten Nucleo UI icons in use |
+| `game.js` | Game loop, the Gate board, shape builder, scoring, share text, stats |
 
-## Adding a rule
+## Adding a rule or a domain
 
-Add an entry to `PUZZLES` in `puzzles.js`: a `test` predicate, a `trap` predicate that agrees with it on most numbers, a `par`, and the reveal copy. The generator picks opening examples where both rules agree and prove numbers where they disagree, so a new rule needs no hand-written boards.
+A rule is an entry in a domain's `rules` array in `domains.js`: a `test` predicate, a `trap` predicate that agrees with it on most items, a `par`, and the reveal copy. The generator picks opening examples where both agree and prove items where they disagree, so a new rule needs no hand-written boards.
+
+A domain needs a `pool()` of items (primitives, so state stays JSON-safe), a `render(item)` for the tile, a `parse(raw)` for typed input or `input: 'builder'` for a picker, and its rules. Add it to `WEEK` in `engine.js` to schedule it.
 
 ## Not in the prototype yet
 
 - Server-side rule evaluation (the rule ships to the client, so it is readable in devtools).
 - Real "how many players solved" stats. The trap shown on reveal is designed, not measured.
-- More domains: words and shapes.
+- More domains: colours, emoji, photos.
