@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Rule</title>
+  <meta name="description" content="A daily deduction game. Find the hidden rule, test your own numbers, then prove it.">
+  <meta name="theme-color" content="#f4f5fa" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0d0f15" media="(prefers-color-scheme: dark)">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Manrope:wght@500;600;700;800&display=swap">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2716%27 fill=%27%2315171f%27/%3E%3Ccircle cx=%2722%27 cy=%2732%27 r=%2710%27 fill=%27%2313b47a%27/%3E%3Ccircle cx=%2744%27 cy=%2732%27 r=%2710%27 fill=%27%23f2506a%27/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <div class="brand">
+        <h1 class="wordmark">Rule<span class="dot">.</span></h1>
+        <span class="meta" id="meta">#1</span>
+      </div>
+      <div class="actions">
+        <button class="iconbtn" id="btnStats" aria-label="Your stats">▮▮</button>
+        <button class="iconbtn" id="btnHelp" aria-label="How to play">?</button>
+      </div>
+    </header>
+
+    <!-- PLAY -->
+    <section id="viewPlay">
+      <p class="lead">Every number is <b class="in-word">in</b> or <b class="out-word">out</b>. There's one secret rule. Find it.</p>
+      <div class="board">
+        <div class="col in" id="colIn"><h2>In</h2><div class="chips" id="chipsIn"></div></div>
+        <div class="col out" id="colOut"><h2>Out</h2><div class="chips" id="chipsOut"></div></div>
+      </div>
+      <div class="legend">
+        <span><i></i> given</span>
+        <span><i class="mine"></i> your tests</span>
+      </div>
+    </section>
+
+    <!-- PROVE -->
+    <section id="viewProve" hidden>
+      <div class="prove-head">
+        <h2>Prove it.</h2>
+        <p>Sort all six. Every one has to be right.</p>
+      </div>
+      <div class="prove-grid" id="proveGrid"></div>
+      <div class="prove-note" id="proveNote" hidden></div>
+      <div class="row">
+        <button class="btn" id="btnBack">Keep testing</button>
+        <button class="btn primary" id="btnCheck" disabled>Check</button>
+      </div>
+    </section>
+
+    <!-- DONE -->
+    <section id="viewDone" hidden>
+      <div class="result">
+        <div class="score-card">
+          <div class="eyebrow" id="doneEyebrow">Solved</div>
+          <div class="big" id="doneScore">−1</div>
+          <div class="sub" id="doneSub">1 under par</div>
+        </div>
+        <div class="info-card rule">
+          <div class="eyebrow">The rule</div>
+          <h3 id="doneRule"></h3>
+          <p id="doneDetail"></p>
+        </div>
+        <div class="info-card trap">
+          <div class="eyebrow">The trap</div>
+          <p id="doneTrap"></p>
+        </div>
+        <pre class="share" id="shareText"></pre>
+        <div class="row">
+          <button class="btn primary" id="btnCopy">Copy result</button>
+          <button class="btn" id="btnPractice">Practice round</button>
+        </div>
+        <p class="next" id="nextIn"></p>
+      </div>
+    </section>
+  </div>
+
+  <!-- probe bar (only in play) -->
+  <div class="probe" id="probeBar">
+    <div class="probe-inner">
+      <div class="verdict" id="verdict"></div>
+      <form id="probeForm" autocomplete="off">
+        <input id="probeInput" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="Try any number" aria-label="Number to test">
+        <button class="btn" type="submit">Test</button>
+      </form>
+      <div class="probe-meta">
+        <span class="strokes" id="strokes"></span>
+        <div class="buttons">
+          <button class="btn ghost" id="btnGiveUp" type="button">Give up</button>
+          <button class="btn primary" id="btnProve" type="button">I know it</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <dialog id="dlgHelp">
+    <h2>How to play</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="n a">1</div>
+        <div><h3>Look</h3><p>Eight numbers are already sorted. One secret rule decides who's in.</p></div>
+      </div>
+      <div class="step">
+        <div class="n b">2</div>
+        <div><h3>Test</h3><p>Type any number. It lands in a column. Every test costs one point.</p></div>
+      </div>
+      <div class="step">
+        <div class="n c">3</div>
+        <div><h3>Prove</h3><p>Sure? Sort six new numbers. All six right and you've cracked it.</p></div>
+      </div>
+    </div>
+    <div class="tip"><b>Tip.</b> The obvious rule is usually a trap. Test numbers you expect to be <b>out</b>.</div>
+    <div class="row"><button class="btn primary" id="btnHelpClose">Let's go</button></div>
+  </dialog>
+
+  <dialog id="dlgStats">
+    <h2>Your stats</h2>
+    <div class="tiles" id="statTiles"></div>
+    <p class="stat-note" id="statNote"></p>
+    <div class="row"><button class="btn primary" id="btnStatsClose">Close</button></div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="puzzles.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
