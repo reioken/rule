@@ -1,4 +1,4 @@
-/* Rule — HTTP API. Evaluates the secret rule so it never ships to the browser. */
+/* Deductidle — HTTP API. Evaluates the secret rule so it never ships to the browser. */
 import { RuleDomains } from './domains.js';
 import * as E from './engine.js';
 
@@ -93,12 +93,20 @@ export async function handleApi(request) {
     const route = url.pathname.replace(/\/+$/, '') || '/';
 
     if (route === '/api/round') {
-      if (input.mode === 'practice' && (input.domainId == null || input.ruleIdx == null || input.seed == null)) {
-        const domain = RuleDomains.list[Math.floor(Math.random() * RuleDomains.list.length)];
-        const ruleIdx = Math.floor(Math.random() * domain.rules.length);
-        const seed = Math.floor(Math.random() * 1e9);
+      if (input.mode === 'practice') {
+        const domain = input.domainId != null && input.domainId !== ''
+          ? RuleDomains[input.domainId]
+          : RuleDomains.list[Math.floor(Math.random() * RuleDomains.list.length)];
+        if (!domain) fail(400, 'Unknown domain');
+        const hasRule = input.ruleIdx != null && input.ruleIdx !== '';
+        const hasSeed = input.seed != null && input.seed !== '';
+        const ruleIdx = hasRule ? Number.parseInt(input.ruleIdx, 10) : Math.floor(Math.random() * domain.rules.length);
+        const rule = domain.rules[ruleIdx];
+        if (!rule) fail(400, 'Unknown rule');
+        const seed = hasSeed ? Number.parseInt(input.seed, 10) : Math.floor(Math.random() * 1e9);
+        if (!Number.isFinite(seed)) fail(400, 'Missing seed');
         const day = Math.max(0, Number.parseInt(input.day, 10) || 0);
-        return json(publicMeta({ mode: 'practice', day, domainId: domain.id, ruleIdx, seed, domain, rule: domain.rules[ruleIdx] }));
+        return json(publicMeta({ mode: 'practice', day, domainId: domain.id, ruleIdx, seed, domain, rule }));
       }
       return json(publicMeta(resolveRound(input)));
     }

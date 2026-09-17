@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { RuleDomains as D } from '../domains.js';
 import * as E from '../engine.js';
 import { handleApi } from '../api.js';
+import { WEEK } from '../schedule.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -48,10 +49,13 @@ for (let day = 0; day < 365; day++) {
   check(`#${day + 1} ${pick.domainId}/${rule.id}`, domain, rule, pick.seed, 3);
 }
 
-/* Every rule of every domain must be scheduled at least once within its first cycle of days. */
+/* Every daily-scheduled domain must use each of its rules within 30 weeks.
+   Practice-only domains (letters, colors) are skipped here. */
 const seen = {};
+const scheduled = new Set(Object.values(WEEK));
 for (let day = 0; day < 7 * 30; day++) { const p = E.dailyPick(day); (seen[p.domainId] ||= new Set()).add(p.ruleIdx); }
 for (const domain of D.list) {
+  if (!scheduled.has(domain.id)) continue;
   const missed = domain.rules.filter((_, i) => !(seen[domain.id] || new Set()).has(i)).map((r) => r.id);
   if (missed.length) fail(`schedule ${domain.id}`, `never scheduled in 30 weeks: ${missed.join(', ')}`);
 }
@@ -112,6 +116,10 @@ if (!right.reveal || right.reveal.rule !== rule.rule) fail('api check', 'solved 
 
 const practice = await (await call('/api/round', { mode: 'practice', day: 0 })).json();
 if (practice.mode !== 'practice' || practice.ruleIdx == null || !practice.evidence) fail('api practice', 'practice round incomplete');
+
+const practiceKind = await (await call('/api/round', { mode: 'practice', day: 0, domainId: 'emoji' })).json();
+if (practiceKind.domainId !== 'emoji') fail('api practice domain', `wanted emoji, got ${practiceKind.domainId}`);
+if (practiceKind.rule || practiceKind.detail || practiceKind.trapName) fail('api practice domain', 'practice round leaked the rule');
 
 console.log(`${boards} boards checked, ${bad} violation${bad === 1 ? '' : 's'}`);
 process.exit(bad ? 1 : 0);

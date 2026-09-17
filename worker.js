@@ -1,4 +1,4 @@
-/* Rule — Cloudflare Worker. API first, then static assets. */
+/* Deductidle — Cloudflare Worker. API first, then static assets. */
 import { handleApi } from './api.js';
 
 export default {

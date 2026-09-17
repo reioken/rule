@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Rule</title>
-  <meta name="description" content="A daily puzzle. Some numbers, words or shapes follow a secret rule and some don't. Work out the rule.">
+  <title>Deductidle</title>
+  <meta name="description" content="A daily puzzle. Some things follow a secret rule and some don't. Work out the rule.">
   <meta name="theme-color" content="#f6f4ef" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#111311" media="(prefers-color-scheme: dark)">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,7 +17,7 @@
   <div class="app">
     <header class="top">
       <div class="brand">
-        <h1 class="wordmark">Rule<span class="dot">.</span></h1>
+        <h1 class="wordmark">Deductidle<span class="dot">.</span></h1>
         <span class="meta" id="meta">#1</span>
         <span class="streak" id="streakBadge" hidden></span>
       </div>
@@ -27,9 +27,11 @@
       </div>
     </header>
 
+    <nav class="kinds" id="kinds" aria-label="Kind of puzzle"></nav>
+
     <!-- PLAY -->
     <section id="viewPlay">
-      <h2 class="headline" id="headline">Eight things already know the secret</h2>
+      <h2 class="headline" id="headline">What's the rule?</h2>
       <div class="camps">
         <div class="camp in">
           <div class="camp-label"><b>IN</b><span>follows the rule</span></div>
@@ -40,7 +42,7 @@
           </div>
         </div>
         <div class="camp out">
-          <div class="camp-label"><b>OUT</b><span>breaks it</span></div>
+          <div class="camp-label"><b>OUT</b><span>doesn't</span></div>
           <div class="bowl" id="bowlOutWrap">
             <img class="bowl-art" src="assets/bowl.png" alt="">
             <img class="splash" src="assets/splash-out.png" alt="">
@@ -49,11 +51,11 @@
         </div>
       </div>
       <ol class="steps-rail" id="stepsRail">
-        <li data-step="look"><i class="dot"></i>Look</li>
-        <li data-step="test"><i class="dot"></i>Test</li>
-        <li data-step="prove"><i class="dot"></i>Prove</li>
+        <li data-step="look"><span class="dot" aria-hidden="true"></span>Look</li>
+        <li data-step="test"><span class="dot" aria-hidden="true"></span>Test</li>
+        <li data-step="prove"><span class="dot" aria-hidden="true"></span>Prove</li>
       </ol>
-      <button class="btn go" id="btnStart" type="button" hidden>Got it — let me try</button>
+      <button class="btn go" id="btnStart" type="button" hidden>Let's play</button>
     </section>
 
     <!-- probe bar (play only) -->
@@ -77,11 +79,13 @@
           <button class="btn" type="button" id="btnBuildTest" data-icon="flask"><span>Test</span></button>
         </div>
 
+        <div id="picker" class="picker" hidden></div>
+
         <div class="probe-meta">
           <span class="strokes" id="strokes"></span>
           <div class="buttons">
             <button class="btn ghost" id="btnGiveUp" type="button" data-icon="flag"><span>Give up</span></button>
-            <button class="btn primary" id="btnProve" type="button" data-icon="lightbulb"><span>I've got it</span></button>
+            <button class="btn primary" id="btnProve" type="button" data-icon="lightbulb"><span>I know it</span></button>
           </div>
         </div>
       </div>
@@ -90,8 +94,8 @@
     <!-- PROVE -->
     <section id="viewProve" hidden>
       <div class="prove-head">
-        <h2>Show you know it.</h2>
-        <p>Sort these six. You need all six right.</p>
+        <h2>Prove it.</h2>
+        <p>All six have to be right.</p>
       </div>
       <div class="prove-grid" id="proveGrid"></div>
       <div class="prove-note" id="proveNote" hidden></div>
@@ -104,7 +108,7 @@
     <!-- DONE -->
     <section id="viewDone" hidden>
       <div class="result">
-        <div class="score-card">
+        <div class="score-card" id="scoreCard">
           <div class="eyebrow" id="doneEyebrow">Solved</div>
           <div class="big" id="doneScore"></div>
           <div class="sub" id="doneSub"></div>
@@ -127,11 +131,11 @@
   <dialog id="dlgHelp">
     <h2>How to play</h2>
     <div class="steps">
-      <div class="step"><div class="n a">1</div><div><h3>Look</h3><p>Eight things are already sorted into In and Out. A secret rule decides which is which.</p></div></div>
-      <div class="step"><div class="n b">2</div><div><h3>Test</h3><p>Type anything you like and see whether it's in or out. The fewer tests you need, the more stars you get.</p></div></div>
-      <div class="step"><div class="n c">3</div><div><h3>Prove</h3><p>Think you've got it? Sort six new things. Get all six right and you're done.</p></div></div>
+      <div class="step"><div class="n a">1</div><div><h3>Look</h3><p>Two bowls. Eight things are already sorted. One secret rule decides which bowl they land in.</p></div></div>
+      <div class="step"><div class="n b">2</div><div><h3>Test</h3><p>Drop in anything you like and watch where it goes. Fewer tests, more stars.</p></div></div>
+      <div class="step"><div class="n c">3</div><div><h3>Prove</h3><p>Think you've got it? Sort six new things. Get every one right and you're done.</p></div></div>
     </div>
-    <div class="row"><button class="btn primary" id="btnHelpClose">Let's go</button></div>
+    <div class="row"><button class="btn primary" id="btnHelpClose">Let's play</button></div>
   </dialog>
 
   <dialog id="dlgStats">

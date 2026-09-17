@@ -1,8 +1,11 @@
-/* Rule — domains. A domain is a pool of items plus a rule library.
+/* Deductidle — domains. A domain is a pool of items plus a rule library.
    Items are primitives (number or string) so game state stays JSON-safe.
    Each rule: { id, rule, detail, test(item), trap(item), trapName, par }.
    Server-only: the client never loads this file. */
-import { numbersView, wordsView, shapesView, digits } from './catalog.js';
+import {
+  numbersView, wordsView, shapesView, lettersView, emojiView, colorsView, cardsView,
+  digits, LETTERS, EMOJIS, COLOR_CHIPS, CARD_RANKS, CARD_SUITS, cardKey, cardParts,
+} from './catalog.js';
 import { RuleWords } from './words.js';
 
 const digitSum = (n) => digits(n).reduce((a, b) => a + b, 0);
@@ -100,4 +103,94 @@ const SHAPES = {
   ],
 };
 
-export const RuleDomains = { numbers: NUMBERS, words: WORDS, shapes: SHAPES, list: [NUMBERS, WORDS, SHAPES] };
+const letterNo = (ch) => ch.charCodeAt(0) - 96; // A = 1
+const firstHalf = (ch) => letterNo(ch) <= 13;
+const evenLetter = (ch) => letterNo(ch) % 2 === 0;
+const STRAIGHT = new Set([...'aefhiklmntvwxyz']);
+const straight = (ch) => STRAIGHT.has(ch);
+
+const LETTERS_D = {
+  ...lettersView,
+  pool() { return LETTERS.slice(); },
+  rules: [
+    { id: 'first-half', rule: 'In the first half of the alphabet', detail: 'A through M. N through Z are out.', test: firstHalf, trap: evenLetter, trapName: 'an even place in the alphabet', par: 3 },
+    { id: 'straight', rule: 'Made of straight lines', detail: 'Drawn as a capital, every stroke is straight. A, E, F, H, I, K, L, M, N, T, V, W, X, Y, Z.', test: straight, trap: firstHalf, trapName: 'in the first half of the alphabet', par: 4 },
+    { id: 'second-half', rule: 'In the second half of the alphabet', detail: 'N through Z. A through M are out.', test: (ch) => !firstHalf(ch), trap: straight, trapName: 'made of straight lines', par: 4 },
+    { id: 'even-place', rule: 'An even place in the alphabet', detail: 'B, D, F, H, J, L, N, P, R, T, V, X or Z. A is 1st.', test: evenLetter, trap: firstHalf, trapName: 'in the first half of the alphabet', par: 3 },
+  ],
+};
+
+const EMOJI_TAGS = {
+  '🐶': ['animal', 'face'], '🐱': ['animal', 'face'], '🐻': ['animal', 'face'], '🦊': ['animal', 'face'],
+  '🐼': ['animal', 'face'], '🐵': ['animal', 'face'], '🐷': ['animal', 'face'], '🦁': ['animal', 'face'],
+  '🐮': ['animal', 'face'], '🐸': ['animal', 'face'],
+  '🐙': ['animal'], '🦋': ['animal'], '🐝': ['animal'], '🐢': ['animal'], '🐟': ['animal'], '🦀': ['animal', 'red'],
+  '😀': ['face'], '😎': ['face'], '🥳': ['face'], '😴': ['face'], '😍': ['face'], '😡': ['face', 'red'],
+  '🥶': ['face'], '😇': ['face'],
+  '🍎': ['food', 'red'], '🍓': ['food', 'red'], '🍒': ['food', 'red'], '🍅': ['food', 'red'],
+  '🍋': ['food'], '🍇': ['food'], '🍕': ['food'], '🍔': ['food'], '🍪': ['food'], '🥕': ['food'],
+  '🍩': ['food'], '🌮': ['food'], '🥦': ['food'], '🧀': ['food'],
+  '🚗': ['vehicle'], '🚕': ['vehicle'], '🚌': ['vehicle'], '🚲': ['vehicle'],
+  '✈️': ['vehicle'], '🚀': ['vehicle'], '🚢': ['vehicle'], '🚂': ['vehicle'],
+  '❤️': ['red'], '🌹': ['red'], '🎈': ['red'], '🔥': ['red'], '📌': ['red'], '🛑': ['red'],
+  '⭐': [], '🌙': [], '☀️': [], '🌲': [], '💎': [], '👑': [], '⚽': [], '🎵': [], '📚': [], '🔑': [],
+};
+const tagged = (e, t) => (EMOJI_TAGS[e] || []).includes(t);
+
+const EMOJI = {
+  ...emojiView,
+  pool() { return EMOJIS.slice(); },
+  rules: [
+    { id: 'animal', rule: 'An animal', detail: 'Living creatures. Faces, food and the rest are out.', test: (e) => tagged(e, 'animal'), trap: (e) => tagged(e, 'face'), trapName: 'a face', par: 3 },
+    { id: 'food', rule: 'Food', detail: 'Something you eat. Colour does not matter.', test: (e) => tagged(e, 'food'), trap: (e) => tagged(e, 'red'), trapName: 'red things', par: 4 },
+    { id: 'face', rule: 'A face', detail: 'A face looks back at you, animal or smiley.', test: (e) => tagged(e, 'face'), trap: (e) => tagged(e, 'animal'), trapName: 'an animal', par: 3 },
+    { id: 'red', rule: 'A red emoji', detail: 'The emoji is red, or mostly red.', test: (e) => tagged(e, 'red'), trap: (e) => tagged(e, 'food'), trapName: 'food', par: 4 },
+  ],
+};
+
+const WARM = new Set(['red', 'crimson', 'orange', 'gold', 'yellow', 'peach', 'coral', 'pink', 'magenta', 'maroon', 'rust', 'wine', 'umber', 'amber', 'brown', 'beige', 'ivory']);
+const DARK = new Set(['crimson', 'maroon', 'rust', 'wine', 'umber', 'brown', 'olive', 'navy', 'indigo', 'black', 'charcoal']);
+const BLUEISH = new Set(['teal', 'cyan', 'turquoise', 'sky', 'blue', 'navy', 'indigo']);
+const SHORT = (id) => id.length <= 4;
+
+const COLORS_D = {
+  ...colorsView,
+  pool() { return COLOR_CHIPS.map((c) => c.id); },
+  rules: [
+    { id: 'warm', rule: 'A warm colour', detail: 'Reds, oranges, yellows, pinks, browns. Cool greens and blues are out.', test: (id) => WARM.has(id), trap: (id) => DARK.has(id), trapName: 'a dark colour', par: 4 },
+    { id: 'dark', rule: 'A dark colour', detail: 'Deep, low-light shades. Pastels and brights are out.', test: (id) => DARK.has(id), trap: (id) => WARM.has(id), trapName: 'a warm colour', par: 4 },
+    { id: 'blueish', rule: 'A blue-green', detail: 'Teal, cyan, turquoise, sky, blue, navy or indigo.', test: (id) => BLUEISH.has(id), trap: SHORT, trapName: 'a name with four letters or fewer', par: 4 },
+    { id: 'short-name', rule: 'A short name', detail: 'The colour\'s name has four letters or fewer.', test: SHORT, trap: (id) => BLUEISH.has(id), trapName: 'a blue-green', par: 4 },
+    { id: 'cool', rule: 'A cool colour', detail: 'Greens, blues, purples, greys. Warm reds and yellows are out.', test: (id) => !WARM.has(id), trap: (id) => DARK.has(id), trapName: 'a dark colour', par: 4 },
+  ],
+};
+
+const isRedSuit = (k) => { const { suit } = cardParts(k); return suit === 'H' || suit === 'D'; };
+const isFace = (k) => { const { rank } = cardParts(k); return rank >= 11; };
+const isSpade = (k) => cardParts(k).suit === 'S';
+const isHeart = (k) => cardParts(k).suit === 'H';
+const evenRank = (k) => cardParts(k).rank % 2 === 0;
+const highRank = (k) => cardParts(k).rank >= 8;
+
+const CARDS = {
+  ...cardsView,
+  pool() {
+    const a = [];
+    for (const r of CARD_RANKS) for (const s of CARD_SUITS) a.push(cardKey(r, s));
+    return a;
+  },
+  rules: [
+    { id: 'red-suit', rule: 'A red suit', detail: 'Hearts and diamonds. Spades and clubs are out.', test: isRedSuit, trap: isFace, trapName: 'a face card', par: 3 },
+    { id: 'face', rule: 'A face card', detail: 'Jack, queen or king. Aces and numbers are out.', test: isFace, trap: isRedSuit, trapName: 'a red card', par: 3 },
+    { id: 'spade', rule: 'A spade', detail: 'Only spades. The other three suits are out.', test: isSpade, trap: highRank, trapName: '8 or higher', par: 4 },
+    { id: 'heart', rule: 'A heart', detail: 'Only hearts.', test: isHeart, trap: evenRank, trapName: 'an even rank', par: 3 },
+    { id: 'even-rank', rule: 'An even rank', detail: '2, 4, 6, 8, 10 or queen. Ace is 1.', test: evenRank, trap: isRedSuit, trapName: 'a red card', par: 4 },
+    { id: 'high', rule: '8 or higher', detail: '8, 9, 10, jack, queen or king. Ace is low.', test: highRank, trap: isRedSuit, trapName: 'a red card', par: 4 },
+  ],
+};
+
+export const RuleDomains = {
+  numbers: NUMBERS, words: WORDS, shapes: SHAPES,
+  letters: LETTERS_D, emoji: EMOJI, colors: COLORS_D, cards: CARDS,
+  list: [NUMBERS, WORDS, SHAPES, LETTERS_D, EMOJI, COLORS_D, CARDS],
+};

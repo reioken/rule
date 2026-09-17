@@ -1,4 +1,4 @@
-/* Rule — game loop. Vanilla JS module. Rules stay on the server. */
+/* Deductidle — game loop. Vanilla JS module. Rules stay on the server. */
 import { RuleCatalog as D } from './catalog.js';
 import { dayIndex, domainFor } from './schedule.js';
 
@@ -88,8 +88,11 @@ function showView() {
   $('btnStart').hidden = !intro;
   document.body.classList.toggle('no-probe', S.phase !== 'play' || intro);
   $('headline').hidden = S.phase !== 'play';
+  $('headline').textContent = 'What\'s the rule?';
   $('stepsRail').hidden = S.phase === 'done';
+  $('kinds').hidden = S.phase === 'done';
   $('meta').textContent = S.mode === 'daily' ? `Puzzle #${S.day + 1} · ${domain().name}` : `Practice · ${domain().name}`;
+  renderKinds();
   const step = intro ? 'look' : S.phase === 'prove' ? 'prove' : 'test';
   for (const li of $('stepsRail').children) {
     const name = li.dataset.step;
@@ -98,8 +101,31 @@ function showView() {
   }
 }
 
+function rotOf(item) {
+  const s = String(item);
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+  return (Math.abs(h) % 11) - 5;
+}
+
 function chipHtml(item, extra = '') {
-  return `<div class="chip ${extra}">${domain().render(item)}</div>`;
+  return `<div class="chip ${extra}" style="--rot:${rotOf(item)}deg">${domain().render(item)}</div>`;
+}
+
+function renderKinds() {
+  const row = $('kinds');
+  if (!row) return;
+  const pills = [{ id: 'today', name: 'Today' }, ...D.list];
+  row.replaceChildren();
+  for (const p of pills) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.dataset.id = p.id;
+    b.textContent = p.name;
+    const on = p.id === 'today' ? S.mode === 'daily' : (S.mode === 'practice' && S.domainId === p.id);
+    b.classList.toggle('on', on);
+    row.appendChild(b);
+  }
 }
 
 function renderBoard(latestItem) {
@@ -108,11 +134,21 @@ function renderBoard(latestItem) {
   inn.replaceChildren();
   out.replaceChildren();
   const rows = [...S.evidence.map((e) => ({ ...e, kind: 'given' })), ...S.log];
+  const firstPaint = latestItem === undefined && S.log.length === 0;
+  let n = 0;
   for (const r of rows) {
     const extra = [r.kind === 'given' ? 'given' : 'mine', latestItem !== undefined && r.item === latestItem ? 'latest' : ''].filter(Boolean).join(' ');
     const wrap = document.createElement('div');
     wrap.innerHTML = chipHtml(r.item, extra);
-    (r.in ? inn : out).appendChild(wrap.firstElementChild);
+    const el = wrap.firstElementChild;
+    if (firstPaint) {
+      el.classList.add('drop');
+      el.style.animationDelay = `${n * 40}ms`;
+    } else if (latestItem !== undefined && r.item === latestItem) {
+      el.classList.add('drop');
+    }
+    (r.in ? inn : out).appendChild(el);
+    n += 1;
   }
   const got = stars();
   const par = S.par;
@@ -126,15 +162,19 @@ function renderBoard(latestItem) {
 function renderInput() {
   const dom = domain();
   const text = dom.input === 'text';
+  const builder = dom.input === 'builder';
+  const pick = dom.input === 'pick' || dom.input === 'pair';
   $('probeForm').hidden = !text;
-  $('builder').hidden = text;
+  $('builder').hidden = !builder;
+  $('picker').hidden = !pick;
   if (text) {
     const inp = $('probeInput');
     inp.placeholder = dom.placeholder;
     inp.inputMode = dom.inputMode;
     inp.maxLength = dom.maxLength;
     inp.value = '';
-  } else renderBuilder();
+  } else if (builder) renderBuilder();
+  else renderPicker();
 }
 
 /* shape builder */
@@ -158,6 +198,59 @@ function renderBuilder() {
   mk($('pickFill'), dom.FILLS, () => sel.fill, (v) => { sel.fill = v; }, (f) => `<span class="fl">${f}</span>`);
   mk($('pickSize'), dom.SIZES, () => sel.size, (v) => { sel.size = v; }, (z) => `<span class="fl">${z}</span>`);
   $('builderPreview').innerHTML = dom.svg(selKey(), 40);
+}
+
+const cardSel = { rank: 1, suit: 'S' };
+function renderPicker() {
+  const dom = domain();
+  const root = $('picker');
+  root.replaceChildren();
+  if (dom.input === 'pair') {
+    root.className = 'picker pair';
+    const prev = document.createElement('div');
+    prev.className = 'pair-preview';
+    prev.innerHTML = dom.render(dom.key(cardSel.rank, cardSel.suit));
+    const rows = document.createElement('div');
+    rows.className = 'pair-rows';
+    const rankRow = document.createElement('div');
+    rankRow.className = 'seg-row';
+    for (const r of dom.RANKS) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(cardSel.rank === r));
+      b.textContent = dom.RANK_MARK[r] || String(r);
+      b.addEventListener('click', () => { cardSel.rank = r; renderPicker(); });
+      rankRow.appendChild(b);
+    }
+    const suitRow = document.createElement('div');
+    suitRow.className = 'seg-row';
+    for (const s of dom.SUITS) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(cardSel.suit === s));
+      b.innerHTML = `<span class="t-card ${s === 'H' || s === 'D' ? 'red' : 'blk'}">${dom.SUIT_MARK[s]}</span>`;
+      b.addEventListener('click', () => { cardSel.suit = s; renderPicker(); });
+      suitRow.appendChild(b);
+    }
+    rows.append(rankRow, suitRow);
+    const go = document.createElement('button');
+    go.className = 'btn pair-go';
+    go.type = 'button';
+    go.innerHTML = I.icon('flask');
+    go.setAttribute('aria-label', 'Test');
+    go.addEventListener('click', () => probe(dom.key(cardSel.rank, cardSel.suit)));
+    root.append(prev, rows, go);
+    return;
+  }
+  root.className = 'picker';
+  for (const item of dom.choices) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.innerHTML = dom.render(item);
+    b.setAttribute('aria-label', `Test ${dom.label(item)}`);
+    b.addEventListener('click', () => probe(item));
+    root.appendChild(b);
+  }
 }
 
 function renderPlay(latestItem) {
@@ -203,6 +296,20 @@ function renderProve() {
   }
 }
 
+function burst() {
+  const host = $('scoreCard');
+  host.querySelectorAll('.burst').forEach((el) => el.remove());
+  if (reduceMotion) return;
+  const bits = document.createElement('div');
+  bits.className = 'burst';
+  bits.innerHTML = Array.from({ length: 14 }, (_, i) => {
+    const ang = (i / 14) * Math.PI * 2;
+    const dist = 52 + (i % 3) * 16;
+    return `<i style="--i:${i};--x:${Math.cos(ang) * dist}px;--y:${Math.sin(ang) * dist}px"></i>`;
+  }).join('');
+  host.appendChild(bits);
+}
+
 function renderDone() {
   showView();
   const solved = S.result === 'solved';
@@ -211,6 +318,9 @@ function renderDone() {
   big.classList.remove('good', 'bad');
   big.innerHTML = starRow(got);
   big.classList.add(got >= 2 ? 'good' : 'bad');
+  $('scoreCard').classList.toggle('win', solved);
+  if (solved) burst();
+  else $('scoreCard').querySelectorAll('.burst').forEach((el) => el.remove());
   if (solved) {
     $('doneEyebrow').textContent = 'Solved';
     const t = `${S.strokes} ${S.strokes === 1 ? 'test' : 'tests'}`;
@@ -228,7 +338,7 @@ function renderDone() {
 }
 
 function shareText() {
-  const head = S.mode === 'daily' ? `Rule #${S.day + 1} · ${domain().name}` : `Rule practice · ${domain().name}`;
+  const head = S.mode === 'daily' ? `Deductidle #${S.day + 1} · ${domain().name}` : `Deductidle practice · ${domain().name}`;
   const got = stars();
   const score = '★'.repeat(got) + '☆'.repeat(3 - got);
   const probes = tests().map((p) => (p.in ? '🟩' : '⬛')).join('') || '·';
@@ -285,7 +395,7 @@ async function probe(item) {
   setTimeout(() => wrap.classList.remove('pop'), 700);
   const v = $('verdict');
   v.className = `verdict ${res.in ? 'in' : 'out'}`;
-  v.innerHTML = `${domain().id === 'shapes' ? domain().render(res.item) : `<span>${domain().label(res.item)}</span>`}<span>is ${res.in ? 'IN' : 'OUT'}</span>`;
+  v.innerHTML = `${['shapes', 'emoji', 'colors', 'cards'].includes(domain().id) ? domain().render(res.item) : `<span>${domain().label(res.item)}</span>`}<span>is ${res.in ? 'IN' : 'OUT'}</span>`;
   void v.offsetWidth;
   v.classList.add('show');
   window.scrollTo({ top: document.documentElement.scrollHeight, behavior: reduceMotion ? 'auto' : 'smooth' });
@@ -452,13 +562,42 @@ $('btnCopy').addEventListener('click', async () => {
 });
 $('btnPractice').addEventListener('click', async () => {
   try {
-    const meta = await api('/api/round', { mode: 'practice', day: S.day });
+    const meta = await api('/api/round', { mode: 'practice', day: S.day, domainId: S.domainId });
     newRound(meta);
     render();
     window.scrollTo(0, 0);
     if (domain().input === 'text') $('probeInput').focus();
   } catch {
     toast('Could not start practice');
+  }
+});
+$('kinds').addEventListener('click', async (e) => {
+  const btn = e.target.closest('button');
+  if (!btn || !S) return;
+  const id = btn.dataset.id;
+  try {
+    if (id === 'today') {
+      const day = Math.max(0, dayIndex());
+      const meta = await api(`/api/round?day=${day}&mode=daily`);
+      const saved = store.get(STATE_PREFIX + day, null);
+      if (saved && saved.seed === meta.seed && saved.domainId === meta.domainId && Array.isArray(saved.evidence)) {
+        S = saved;
+        if (S.phase === 'prove') S.phase = 'play';
+        S.par = meta.par;
+        S.evidence = meta.evidence;
+      } else {
+        newRound(meta);
+        save();
+      }
+    } else {
+      const meta = await api('/api/round', { mode: 'practice', day: Math.max(0, dayIndex()), domainId: id });
+      newRound(meta);
+    }
+    resetGiveUp();
+    render();
+    window.scrollTo(0, 0);
+  } catch {
+    toast('Could not start');
   }
 });
 $('btnStart').addEventListener('click', () => {
@@ -490,6 +629,6 @@ I.mount();
     render();
     if (!store.get('rule.seen', false)) showView();
   } catch {
-    $('headline').textContent = 'Could not load today\'s rule. Refresh to try again.';
+    $('headline').textContent = 'Could not load today\'s puzzle. Refresh to try again.';
   }
 })();

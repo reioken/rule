@@ -1,10 +1,9 @@
-/* Rule — public domain UI. Render, parse and the shape builder. No rules, no pools. */
+/* Deductidle — public domain UI. Render, parse and pickers. No rules, no pools. */
 const digits = (n) => String(n).split('').map(Number);
 
 export const numbersView = {
   id: 'numbers', name: 'Numbers', noun: 'number', input: 'text',
   placeholder: 'Try any number', inputMode: 'numeric', maxLength: 6,
-  lead: 'Some numbers are <b class="in-word">in</b>, some are <b class="out-word">out</b>. One rule decides. Work it out.',
   parse(raw) {
     const s = String(raw).trim();
     if (!/^\d{1,6}$/.test(s)) return { error: 'Whole numbers only' };
@@ -17,7 +16,6 @@ export const numbersView = {
 export const wordsView = {
   id: 'words', name: 'Words', noun: 'word', input: 'text',
   placeholder: 'Try any word', inputMode: 'text', maxLength: 12,
-  lead: 'Some words are <b class="in-word">in</b>, some are <b class="out-word">out</b>. One rule decides. Work it out.',
   parse(raw) {
     const s = String(raw).trim().toLowerCase();
     if (!/^[a-z]{2,12}$/.test(s)) return { error: 'Letters only, 2 to 12' };
@@ -53,7 +51,6 @@ function shapeSvg(key, size = 48) {
 
 export const shapesView = {
   id: 'shapes', name: 'Shapes', noun: 'shape', input: 'builder',
-  lead: 'Some shapes are <b class="in-word">in</b>, some are <b class="out-word">out</b>. One rule decides. Work it out.',
   SIDES, COLORS, FILLS, SIZES, SHAPE_NAMES, HEX, svg: shapeSvg, shape,
   parse(raw) {
     const s = String(raw).trim();
@@ -64,6 +61,127 @@ export const shapesView = {
   label(k) { const { sides, color, fill, size } = shape(k); return `${size} ${fill} ${color} ${SHAPE_NAMES[sides]}`; },
 };
 
-export const RuleCatalog = { numbers: numbersView, words: wordsView, shapes: shapesView, list: [numbersView, wordsView, shapesView] };
+export const LETTERS = [...'abcdefghijklmnopqrstuvwxyz'];
+export const lettersView = {
+  id: 'letters', name: 'Letters', noun: 'letter', input: 'pick',
+  choices: LETTERS,
+  parse(raw) {
+    const s = String(raw).trim().toLowerCase();
+    if (!/^[a-z]$/.test(s)) return { error: 'One letter' };
+    return { item: s };
+  },
+  render(ch) { return `<span class="t-letter">${String(ch).toUpperCase()}</span>`; },
+  label(ch) { return String(ch).toUpperCase(); },
+};
+
+export const EMOJIS = [
+  '🐶', '🐱', '🐻', '🦊', '🐼', '🐵', '🐷', '🦁', '🐮', '🐸',
+  '🐙', '🦋', '🐝', '🐢', '🐟', '🦀',
+  '😀', '😎', '🥳', '😴', '😍', '😡', '🥶', '😇',
+  '🍎', '🍓', '🍒', '🍅', '🍋', '🍇', '🍕', '🍔', '🍪', '🥕', '🍩', '🌮', '🥦', '🧀',
+  '🚗', '🚕', '🚌', '🚲', '✈️', '🚀', '🚢', '🚂',
+  '❤️', '🌹', '🎈', '🔥', '📌', '🛑',
+  '⭐', '🌙', '☀️', '🌲', '💎', '👑', '⚽', '🎵', '📚', '🔑',
+];
+export const emojiView = {
+  id: 'emoji', name: 'Emoji', noun: 'emoji', input: 'pick',
+  choices: EMOJIS,
+  parse(raw) {
+    const s = String(raw).trim();
+    if (!EMOJIS.includes(s)) return { error: 'Pick an emoji from the list' };
+    return { item: s };
+  },
+  render(e) { return `<span class="t-emoji">${e}</span>`; },
+  label(e) { return e; },
+};
+
+export const COLOR_CHIPS = [
+  { id: 'red', hex: '#e23d28', name: 'Red' },
+  { id: 'crimson', hex: '#b91c3c', name: 'Crimson' },
+  { id: 'orange', hex: '#ef7a2a', name: 'Orange' },
+  { id: 'gold', hex: '#e2a51a', name: 'Gold' },
+  { id: 'yellow', hex: '#e7c31a', name: 'Yellow' },
+  { id: 'peach', hex: '#f3b48c', name: 'Peach' },
+  { id: 'coral', hex: '#ef6b5a', name: 'Coral' },
+  { id: 'pink', hex: '#e86aa0', name: 'Pink' },
+  { id: 'magenta', hex: '#c23a8a', name: 'Magenta' },
+  { id: 'maroon', hex: '#8a2030', name: 'Maroon' },
+  { id: 'rust', hex: '#b54a2a', name: 'Rust' },
+  { id: 'wine', hex: '#6e1d3a', name: 'Wine' },
+  { id: 'umber', hex: '#5c3a1e', name: 'Umber' },
+  { id: 'amber', hex: '#d4940a', name: 'Amber' },
+  { id: 'brown', hex: '#7a4a28', name: 'Brown' },
+  { id: 'beige', hex: '#d8c3a5', name: 'Beige' },
+  { id: 'ivory', hex: '#f3ead2', name: 'Ivory' },
+  { id: 'lime', hex: '#8bcf2b', name: 'Lime' },
+  { id: 'green', hex: '#2f9e6e', name: 'Green' },
+  { id: 'olive', hex: '#6b7a2a', name: 'Olive' },
+  { id: 'mint', hex: '#8ed9b6', name: 'Mint' },
+  { id: 'teal', hex: '#1f9a8a', name: 'Teal' },
+  { id: 'cyan', hex: '#2ec4d4', name: 'Cyan' },
+  { id: 'turquoise', hex: '#2aabb0', name: 'Turquoise' },
+  { id: 'sky', hex: '#5aa7e8', name: 'Sky' },
+  { id: 'blue', hex: '#3b6fe0', name: 'Blue' },
+  { id: 'navy', hex: '#243a7a', name: 'Navy' },
+  { id: 'indigo', hex: '#4b3fa8', name: 'Indigo' },
+  { id: 'purple', hex: '#7a3fa8', name: 'Purple' },
+  { id: 'lavender', hex: '#b9a8e0', name: 'Lavender' },
+  { id: 'black', hex: '#1a1c1a', name: 'Black' },
+  { id: 'charcoal', hex: '#3a3f3a', name: 'Charcoal' },
+  { id: 'gray', hex: '#7a7f79', name: 'Gray' },
+  { id: 'white', hex: '#f4f1ea', name: 'White' },
+];
+const colorById = Object.fromEntries(COLOR_CHIPS.map((c) => [c.id, c]));
+export const colorsView = {
+  id: 'colors', name: 'Colors', noun: 'color', input: 'pick',
+  choices: COLOR_CHIPS.map((c) => c.id),
+  chips: COLOR_CHIPS,
+  parse(raw) {
+    const id = String(raw).trim().toLowerCase();
+    if (!colorById[id]) return { error: 'Pick a color' };
+    return { item: id };
+  },
+  render(id) {
+    const c = colorById[id] || { hex: '#888', name: id };
+    return `<span class="t-color" style="background:${c.hex}" title="${c.name}"></span>`;
+  },
+  label(id) { return (colorById[id] || { name: id }).name; },
+};
+
+export const CARD_RANKS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+export const CARD_SUITS = ['S', 'H', 'D', 'C'];
+export const SUIT_MARK = { S: '♠', H: '♥', D: '♦', C: '♣' };
+export const RANK_MARK = { 1: 'A', 11: 'J', 12: 'Q', 13: 'K' };
+export const cardKey = (rank, suit) => `${rank}${suit}`;
+export const cardParts = (key) => ({ rank: Number(String(key).slice(0, -1)), suit: String(key).slice(-1) });
+export const cardFace = (key) => {
+  const { rank, suit } = cardParts(key);
+  return `${RANK_MARK[rank] || rank}${SUIT_MARK[suit]}`;
+};
+export const cardsView = {
+  id: 'cards', name: 'Cards', noun: 'card', input: 'pair',
+  RANKS: CARD_RANKS, SUITS: CARD_SUITS, SUIT_MARK, RANK_MARK, key: cardKey, parts: cardParts,
+  parse(raw) {
+    const s = String(raw).trim().toUpperCase();
+    const m = s.match(/^(A|J|Q|K|10|[1-9]|1[0-3])([SHDC])$/);
+    if (!m) return { error: 'Pick a card' };
+    const rankMap = { A: 1, J: 11, Q: 12, K: 13 };
+    const rank = rankMap[m[1]] || Number(m[1]);
+    if (rank < 1 || rank > 13) return { error: 'Pick a card' };
+    return { item: cardKey(rank, m[2]) };
+  },
+  render(k) {
+    const { suit } = cardParts(k);
+    const red = suit === 'H' || suit === 'D';
+    return `<span class="t-card ${red ? 'red' : 'blk'}">${cardFace(k)}</span>`;
+  },
+  label(k) { return cardFace(k); },
+};
+
+export const RuleCatalog = {
+  numbers: numbersView, words: wordsView, shapes: shapesView,
+  letters: lettersView, emoji: emojiView, colors: colorsView, cards: cardsView,
+  list: [numbersView, wordsView, shapesView, lettersView, emojiView, colorsView, cardsView],
+};
 
 export { digits };

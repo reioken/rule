@@ -1,4 +1,4 @@
-/* Rule — generic round generator. Works on any domain's pool + rule. Server-only. */
+/* Deductidle — generic round generator. Works on any domain's pool + rule. Server-only. */
 import { RuleDomains } from './domains.js';
 import { LAUNCH_UTC, domainFor } from './schedule.js';
 
