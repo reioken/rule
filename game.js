@@ -87,8 +87,8 @@
   }
 
   /* shape builder */
-  const sel = { sides: 3, color: 'red', fill: 'filled' };
-  const selKey = () => `${sel.sides}:${sel.color}:${sel.fill}`;
+  const sel = { sides: 3, color: 'red', fill: 'filled', size: 'big' };
+  const selKey = () => `${sel.sides}:${sel.color}:${sel.fill}:${sel.size}`;
   function renderBuilder() {
     const dom = D.shapes;
     const mk = (row, options, get, set, content) => {
@@ -105,6 +105,7 @@
     mk($('pickSides'), dom.SIDES, () => sel.sides, (v) => { sel.sides = v; }, (s) => dom.svg(`${s}:${sel.color}:outline`, 22));
     mk($('pickColor'), dom.COLORS, () => sel.color, (v) => { sel.color = v; }, (c) => `<span class="sw" style="background:${dom.HEX[c]}"></span>`);
     mk($('pickFill'), dom.FILLS, () => sel.fill, (v) => { sel.fill = v; }, (f) => `<span class="fl">${f}</span>`);
+    mk($('pickSize'), dom.SIZES, () => sel.size, (v) => { sel.size = v; }, (z) => `<span class="fl">${z}</span>`);
     $('builderPreview').innerHTML = dom.svg(selKey(), 40);
   }
 

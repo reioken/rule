@@ -97,7 +97,8 @@
   const SIDES = [3, 4, 5, 6, 7, 8, 0];   // 0 = circle
   const COLORS = ['red', 'yellow', 'green', 'blue'];
   const FILLS = ['filled', 'outline'];
-  const shape = (key) => { const [s, c, f] = key.split(':'); return { sides: Number(s), color: c, fill: f }; };
+  const SIZES = ['big', 'small'];
+  const shape = (key) => { const [s, c, f, z] = key.split(':'); return { sides: Number(s), color: c, fill: f, size: z || 'big' }; };
   const SHAPE_NAMES = { 0: 'circle', 3: 'triangle', 4: 'square', 5: 'pentagon', 6: 'hexagon', 7: 'heptagon', 8: 'octagon' };
   const HEX = { red: '#e0563f', yellow: '#e7b131', green: '#2f9e6e', blue: '#3b6fe0' };
 
@@ -108,25 +109,28 @@
     return pts.join(' ');
   }
   function shapeSvg(key, size = 48) {
-    const { sides, color, fill } = shape(key);
+    const { sides, color, fill, size: sz } = shape(key);
     const col = HEX[color];
+    const r = sz === 'small' ? 12 : 20;   // same centre, same stroke, smaller body
     const paint = fill === 'filled' ? `fill="${col}" stroke="${col}"` : `fill="none" stroke="${col}"`;
-    const body = sides === 0 ? `<circle cx="24" cy="24" r="20" ${paint} stroke-width="4" stroke-linejoin="round"/>`
-      : `<polygon points="${polygonPoints(sides)}" ${paint} stroke-width="4" stroke-linejoin="round"/>`;
-    return `<svg class="t-shape" width="${size}" height="${size}" viewBox="0 0 48 48" aria-label="${fill} ${color} ${SHAPE_NAMES[sides]}">${body}</svg>`;
+    const body = sides === 0 ? `<circle cx="24" cy="24" r="${r}" ${paint} stroke-width="4" stroke-linejoin="round"/>`
+      : `<polygon points="${polygonPoints(sides, r)}" ${paint} stroke-width="4" stroke-linejoin="round"/>`;
+    return `<svg class="t-shape" width="${size}" height="${size}" viewBox="0 0 48 48" aria-label="${sz} ${fill} ${color} ${SHAPE_NAMES[sides]}">${body}</svg>`;
   }
   const warm = (k) => ['red', 'yellow'].includes(shape(k).color);
   const filled = (k) => shape(k).fill === 'filled';
+  const small = (k) => shape(k).size === 'small';
+  const big = (k) => shape(k).size === 'big';
   const sidesOf = (k) => shape(k).sides;
 
   const SHAPES = {
     id: 'shapes', name: 'Shapes', noun: 'shape', input: 'builder',
     lead: 'Every shape is <b class="in-word">in</b> or <b class="out-word">out</b>. One secret rule decides. Find it.',
-    SIDES, COLORS, FILLS, SHAPE_NAMES, HEX, svg: shapeSvg,
-    pool() { const a = []; for (const s of SIDES) for (const c of COLORS) for (const f of FILLS) a.push(`${s}:${c}:${f}`); return a; },
+    SIDES, COLORS, FILLS, SIZES, SHAPE_NAMES, HEX, svg: shapeSvg,
+    pool() { const a = []; for (const s of SIDES) for (const c of COLORS) for (const f of FILLS) for (const z of SIZES) a.push(`${s}:${c}:${f}:${z}`); return a; },
     parse(raw) { return { item: raw }; },
     render(k) { return shapeSvg(k, 44); },
-    label(k) { const { sides, color, fill } = shape(k); return `${fill} ${color} ${SHAPE_NAMES[sides]}`; },
+    label(k) { const { sides, color, fill, size } = shape(k); return `${size} ${fill} ${color} ${SHAPE_NAMES[sides]}`; },
     rules: [
       { id: 'odd-sides', rule: 'An odd number of sides', detail: 'Triangles, pentagons and heptagons. Circles have no sides.', test: (k) => [3, 5, 7].includes(sidesOf(k)), trap: filled, trapName: 'filled shapes', par: 4 },
       { id: 'warm', rule: 'A warm colour', detail: 'Red or yellow, whatever the shape.', test: warm, trap: filled, trapName: 'filled shapes', par: 3 },
@@ -138,6 +142,8 @@
       { id: 'round-or-8', rule: 'Rolls', detail: 'Circles and octagons. Anything that would roll down a hill.', test: (k) => sidesOf(k) === 0 || sidesOf(k) === 8, trap: (k) => shape(k).color === 'blue', trapName: 'blue shapes', par: 4 },
       { id: 'red-filled', rule: 'Red and filled', detail: 'Both at once. A red outline is out, a filled blue is out.', test: (k) => shape(k).color === 'red' && filled(k), trap: (k) => shape(k).color === 'red', trapName: 'red shapes', par: 5 },
       { id: 'even-sides', rule: 'An even number of sides', detail: 'Squares, hexagons and octagons. Circles are out.', test: (k) => sidesOf(k) > 0 && sidesOf(k) % 2 === 0, trap: (k) => shape(k).color === 'green' || shape(k).color === 'blue', trapName: 'cool colours', par: 4 },
+      { id: 'small', rule: 'Small', detail: 'Size is all that matters. Colour, sides and fill are ignored.', test: small, trap: (k) => !filled(k), trapName: 'outlined shapes', par: 3 },
+      { id: 'big-warm', rule: 'Big and warm', detail: 'Big, and red or yellow. A small red shape is out, a big blue one is out.', test: (k) => big(k) && warm(k), trap: warm, trapName: 'warm colours', par: 5 },
     ],
   };
 

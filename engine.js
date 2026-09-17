@@ -66,7 +66,10 @@
     const rules = window.RuleDomains[domainId].rules;
     let nth = 0; // how many earlier days used this domain
     for (let d = 0; d < day; d++) if (domainFor(d) === domainId) nth++;
-    const ruleIdx = (nth * 3) % rules.length;
+    const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+    let stride = 3; // smallest stride from 3 up that is coprime with the library size, so every rule gets a turn
+    while (gcd(stride, rules.length) !== 1) stride++;
+    const ruleIdx = (nth * stride) % rules.length;
     return { domainId, ruleIdx, seed: day * 1000 + 17 };
   }
 

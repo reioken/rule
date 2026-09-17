@@ -3,7 +3,7 @@
 A daily deduction game. Eight things are already sorted into **In** and **Out** by a secret rule.
 Send your own through the gate, then prove you know the rule by sorting six more.
 
-Three domains take turns through the week: **numbers**, **words** and **shapes**.
+Three domains take turns through the week: **numbers**, **words** and **shapes** (sides, colour, fill and size).
 
 - One rule per day, the same for everyone.
 - Every test costs a point. Score is tests against par, golf style.
