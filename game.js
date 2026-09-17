@@ -83,22 +83,37 @@ function showView() {
   $('viewPlay').hidden = S.phase !== 'play';
   $('viewProve').hidden = S.phase !== 'prove';
   $('viewDone').hidden = S.phase !== 'done';
-  $('probeBar').hidden = S.phase !== 'play';
-  document.body.classList.toggle('no-probe', S.phase !== 'play');
-  $('meta').textContent = S.mode === 'daily' ? `#${S.day + 1} · ${domain().name}` : `Practice · ${domain().name}`;
+  const intro = S.phase === 'play' && !store.get('rule.seen', false);
+  $('probeBar').hidden = S.phase !== 'play' || intro;
+  $('btnStart').hidden = !intro;
+  document.body.classList.toggle('no-probe', S.phase !== 'play' || intro);
+  $('headline').hidden = S.phase !== 'play';
+  $('stepsRail').hidden = S.phase === 'done';
+  $('meta').textContent = S.mode === 'daily' ? `Puzzle #${S.day + 1} · ${domain().name}` : `Practice · ${domain().name}`;
+  const step = intro ? 'look' : S.phase === 'prove' ? 'prove' : 'test';
+  for (const li of $('stepsRail').children) {
+    const name = li.dataset.step;
+    li.classList.toggle('on', name === step);
+    li.classList.toggle('done', (step === 'test' && name === 'look') || (step === 'prove' && name !== 'prove'));
+  }
+}
+
+function chipHtml(item, extra = '') {
+  return `<div class="chip ${extra}">${domain().render(item)}</div>`;
 }
 
 function renderBoard(latestItem) {
-  const gate = $('gate');
-  gate.replaceChildren();
+  const inn = $('bowlIn');
+  const out = $('bowlOut');
+  inn.replaceChildren();
+  out.replaceChildren();
   const rows = [...S.evidence.map((e) => ({ ...e, kind: 'given' })), ...S.log];
   for (const r of rows) {
-    const el = document.createElement('div');
-    el.className = `grow ${r.in ? 'in' : 'out'} ${r.kind === 'given' ? 'given' : 'mine'}${latestItem !== undefined && r.item === latestItem ? ' latest' : ''}`;
-    el.innerHTML = `${tileHtml(r.item)}<i class="tick"></i>`;
-    gate.appendChild(el);
+    const extra = [r.kind === 'given' ? 'given' : 'mine', latestItem !== undefined && r.item === latestItem ? 'latest' : ''].filter(Boolean).join(' ');
+    const wrap = document.createElement('div');
+    wrap.innerHTML = chipHtml(r.item, extra);
+    (r.in ? inn : out).appendChild(wrap.firstElementChild);
   }
-  const n = tests().length;
   const got = stars();
   const par = S.par;
   const left = got === 3 ? par - S.strokes : par + 2 - S.strokes;
@@ -106,7 +121,6 @@ function renderBoard(latestItem) {
     : left === 0 ? `last one for ${got} stars`
     : `<b>${left}</b> left for ${got} stars`;
   $('strokes').innerHTML = `${starRow(got)}<span><b>${S.strokes}</b> ${S.strokes === 1 ? 'test' : 'tests'} · ${goal}</span>`;
-  $('nodeSub').textContent = n === 0 ? (domain().input === 'text' ? `Try any ${domain().noun} below` : 'Build a shape below') : 'Try another one';
 }
 
 function renderInput() {
@@ -148,7 +162,6 @@ function renderBuilder() {
 
 function renderPlay(latestItem) {
   showView();
-  $('lead').innerHTML = domain().lead;
   renderInput();
   renderBoard(latestItem);
   if (!giveUpArmed && !giveUpBusy) {
@@ -209,13 +222,6 @@ function renderDone() {
   const rev = S.reveal || {};
   $('doneRule').textContent = rev.rule || '';
   $('doneDetail').textContent = rev.detail || '';
-  const { falseIn, falseOut } = rev.breakers || {};
-  const n = (falseIn != null) + (falseOut != null);
-  $('doneTrap').innerHTML = `Easy to mistake for <b>${rev.trapName || 'a simpler rule'}</b>. ${n > 1 ? 'These two prove otherwise.' : 'This one proves otherwise.'}`;
-  const br = [];
-  if (falseIn != null) br.push(`<span class="breaker out">${tileHtml(falseIn)}<small>out</small></span>`);
-  if (falseOut != null) br.push(`<span class="breaker in">${tileHtml(falseOut)}<small>in</small></span>`);
-  $('doneBreakers').innerHTML = br.join('');
   $('shareText').textContent = shareText();
   $('btnPractice').querySelector('span').textContent = S.mode === 'daily' ? 'Practice' : 'Practice again';
   tickCountdown();
@@ -272,18 +278,16 @@ async function probe(item) {
   S.log.push({ item: res.item, in: res.in, kind: 'test' });
   save();
   renderBoard(res.item);
-  const node = $('node');
-  node.classList.remove('hit-in', 'hit-out');
-  void node.offsetWidth;
-  node.classList.add(res.in ? 'hit-in' : 'hit-out');
-  setTimeout(() => node.classList.remove('hit-in', 'hit-out'), 700);
+  const wrap = $(res.in ? 'bowlInWrap' : 'bowlOutWrap');
+  wrap.classList.remove('pop');
+  void wrap.offsetWidth;
+  wrap.classList.add('pop');
+  setTimeout(() => wrap.classList.remove('pop'), 700);
   const v = $('verdict');
   v.className = `verdict ${res.in ? 'in' : 'out'}`;
   v.innerHTML = `${domain().id === 'shapes' ? domain().render(res.item) : `<span>${domain().label(res.item)}</span>`}<span>is ${res.in ? 'IN' : 'OUT'}</span>`;
   void v.offsetWidth;
   v.classList.add('show');
-  /* Bring the bar, and so the newest row just above it, into view. The bar is sticky, so once it is
-     pinned scrollIntoView on it is a no-op; scrolling to the page end is the same target that works. */
   window.scrollTo({ top: document.documentElement.scrollHeight, behavior: reduceMotion ? 'auto' : 'smooth' });
 }
 
@@ -404,9 +408,8 @@ function renderStats() {
     [`${I.icon('star', 'star')}${st.stars}`, 'Stars'], [st.tests ? `${fals}%` : '–', 'Out tests']];
   $('statTiles').innerHTML = tiles.map(([v, l]) => `<div class="tile-stat"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
   $('statDomains').innerHTML = D.list.map((d) => { const x = (st.domains || {})[d.id] || { played: 0, solved: 0 }; return `<div><span>${d.name}</span><b>${x.solved} / ${x.played}</b></div>`; }).join('');
-  $('statNote').innerHTML = st.tests
-    ? `<b>Out tests</b> is the share of your tests that came back <b>out</b>. Testing things you expect to fail is how you find the real rule. Aim for more than half.`
-    : `Finish today's rule and your stats show up here.`;
+  $('statNote').hidden = true;
+  $('statNote').textContent = '';
 }
 
 /* ---------- wiring ---------- */
@@ -458,6 +461,11 @@ $('btnPractice').addEventListener('click', async () => {
     toast('Could not start practice');
   }
 });
+$('btnStart').addEventListener('click', () => {
+  store.set('rule.seen', true);
+  showView();
+  if (domain().input === 'text') $('probeInput').focus();
+});
 $('btnHelp').addEventListener('click', () => $('dlgHelp').showModal());
 $('btnHelpClose').addEventListener('click', () => { $('dlgHelp').close(); if (domain().input === 'text') $('probeInput').focus(); });
 $('btnStats').addEventListener('click', () => { renderStats(); $('dlgStats').showModal(); });
@@ -480,8 +488,8 @@ I.mount();
       save();
     }
     render();
-    if (!store.get('rule.seen', false)) { store.set('rule.seen', true); $('dlgHelp').showModal(); }
+    if (!store.get('rule.seen', false)) showView();
   } catch {
-    $('lead').textContent = 'Could not load today\'s rule. Refresh to try again.';
+    $('headline').textContent = 'Could not load today\'s rule. Refresh to try again.';
   }
 })();

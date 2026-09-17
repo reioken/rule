@@ -7,7 +7,7 @@ import { handleApi } from '../api.js';
 
 const root = resolve(join(fileURLToPath(new URL('.', import.meta.url)), '..'));
 const port = Number(process.env.PORT) || 8787;
-const PUBLIC = new Set(['.html', '.css', '.js', '.svg', '.ico', '.txt', '.map', '.woff2']);
+const PUBLIC = new Set(['.html', '.css', '.js', '.svg', '.ico', '.txt', '.map', '.woff2', '.png']);
 const PRIVATE = new Set(['api.js', 'domains.js', 'engine.js', 'words.js', 'worker.js', 'package.json', 'package-lock.json', 'wrangler.toml']);
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -15,7 +15,7 @@ const MIME = {
   '.css': 'text/css; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.json': 'application/json; charset=utf-8',
-  '.txt': 'text/plain; charset=utf-8',
+  '.png': 'image/png',
 };
 
 const server = createServer(async (req, res) => {

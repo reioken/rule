@@ -29,17 +29,31 @@
 
     <!-- PLAY -->
     <section id="viewPlay">
-      <p class="lead" id="lead"></p>
-      <div class="gate-head">
-        <div class="gh in"><b>In</b><span>follows the rule</span></div>
-        <div class="gh out"><b>Out</b><span>doesn't</span></div>
+      <h2 class="headline" id="headline">Eight things already know the secret</h2>
+      <div class="camps">
+        <div class="camp in">
+          <div class="camp-label"><b>IN</b><span>follows the rule</span></div>
+          <div class="bowl" id="bowlInWrap">
+            <img class="bowl-art" src="assets/bowl.png" alt="">
+            <img class="splash" src="assets/splash-in.png" alt="">
+            <div class="bowl-chips" id="bowlIn"></div>
+          </div>
+        </div>
+        <div class="camp out">
+          <div class="camp-label"><b>OUT</b><span>breaks it</span></div>
+          <div class="bowl" id="bowlOutWrap">
+            <img class="bowl-art" src="assets/bowl.png" alt="">
+            <img class="splash" src="assets/splash-out.png" alt="">
+            <div class="bowl-chips" id="bowlOut"></div>
+          </div>
+        </div>
       </div>
-      <div class="gate" id="gate"></div>
-      <div class="node" id="node">
-        <span class="orb"></span>
-        <span class="node-label">Your turn</span>
-        <span class="node-sub" id="nodeSub">Try any number below</span>
-      </div>
+      <ol class="steps-rail" id="stepsRail">
+        <li data-step="look"><i class="dot"></i>Look</li>
+        <li data-step="test"><i class="dot"></i>Test</li>
+        <li data-step="prove"><i class="dot"></i>Prove</li>
+      </ol>
+      <button class="btn go" id="btnStart" type="button" hidden>Got it — let me try</button>
     </section>
 
     <!-- probe bar (play only) -->
@@ -100,11 +114,6 @@
           <h3 id="doneRule"></h3>
           <p id="doneDetail"></p>
         </div>
-        <div class="info-card trap">
-          <div class="eyebrow">The trap</div>
-          <p id="doneTrap"></p>
-          <div class="breakers" id="doneBreakers"></div>
-        </div>
         <pre class="share" id="shareText"></pre>
         <div class="row">
           <button class="btn primary" id="btnCopy" data-icon="copy"><span>Copy result</span></button>
@@ -122,8 +131,6 @@
       <div class="step"><div class="n b">2</div><div><h3>Test</h3><p>Type anything you like and see whether it's in or out. The fewer tests you need, the more stars you get.</p></div></div>
       <div class="step"><div class="n c">3</div><div><h3>Prove</h3><p>Think you've got it? Sort six new things. Get all six right and you're done.</p></div></div>
     </div>
-    <div class="tip"><b>Tip.</b> The first rule that comes to mind is usually wrong. Test things you think are <b>out</b>.</div>
-    <div class="tip small">Numbers, words and shapes take turns through the week.</div>
     <div class="row"><button class="btn primary" id="btnHelpClose">Let's go</button></div>
   </dialog>
 
@@ -131,7 +138,7 @@
     <h2>Your stats</h2>
     <div class="tiles" id="statTiles"></div>
     <div class="by-domain" id="statDomains"></div>
-    <p class="stat-note" id="statNote"></p>
+    <p class="stat-note" id="statNote" hidden></p>
     <div class="row"><button class="btn primary" id="btnStatsClose">Close</button></div>
   </dialog>
 
