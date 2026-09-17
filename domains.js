@@ -19,7 +19,7 @@
   const NUMBERS = {
     id: 'numbers', name: 'Numbers', noun: 'number', input: 'text',
     placeholder: 'Try any number', inputMode: 'numeric', maxLength: 6,
-    lead: 'Every number is <b class="in-word">in</b> or <b class="out-word">out</b>. One secret rule decides. Find it.',
+    lead: 'Some numbers are <b class="in-word">in</b>, some are <b class="out-word">out</b>. One rule decides. Work it out.',
     pool(range = [10, 999]) { const a = []; for (let n = range[0]; n <= range[1]; n++) a.push(n); return a; },
     parse(raw) {
       const s = raw.trim();
@@ -66,7 +66,7 @@
   const WORDS = {
     id: 'words', name: 'Words', noun: 'word', input: 'text',
     placeholder: 'Try any word', inputMode: 'text', maxLength: 12,
-    lead: 'Every word is <b class="in-word">in</b> or <b class="out-word">out</b>. One secret rule decides. Find it.',
+    lead: 'Some words are <b class="in-word">in</b>, some are <b class="out-word">out</b>. One rule decides. Work it out.',
     pool() { return window.RuleWords.slice(); },
     parse(raw) {
       const s = raw.trim().toLowerCase();
@@ -125,7 +125,7 @@
 
   const SHAPES = {
     id: 'shapes', name: 'Shapes', noun: 'shape', input: 'builder',
-    lead: 'Every shape is <b class="in-word">in</b> or <b class="out-word">out</b>. One secret rule decides. Find it.',
+    lead: 'Some shapes are <b class="in-word">in</b>, some are <b class="out-word">out</b>. One rule decides. Work it out.',
     SIDES, COLORS, FILLS, SIZES, SHAPE_NAMES, HEX, svg: shapeSvg,
     pool() { const a = []; for (const s of SIDES) for (const c of COLORS) for (const f of FILLS) for (const z of SIZES) a.push(`${s}:${c}:${f}:${z}`); return a; },
     parse(raw) { return { item: raw }; },

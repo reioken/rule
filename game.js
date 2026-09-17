@@ -1,4 +1,4 @@
-/* Rule — game loop for The Gate. Vanilla JS, no build step. */
+/* Rule — game loop. Vanilla JS, no build step. */
 (() => {
   const D = window.RuleDomains;
   const E = window.RuleEngine;
@@ -69,7 +69,7 @@
     }
     const n = tests().length;
     $('strokes').innerHTML = `<b>${S.strokes}</b> ${S.strokes === 1 ? 'test' : 'tests'} · par ${rule().par}`;
-    $('nodeSub').textContent = n === 0 ? `Try any ${domain().noun}` : 'Try another';
+    $('nodeSub').textContent = n === 0 ? (domain().input === 'text' ? `Try any ${domain().noun} below` : 'Build a shape below') : 'Try another one';
   }
 
   function renderInput() {
@@ -174,7 +174,7 @@
     $('doneDetail').textContent = r.detail;
     const { falseIn, falseOut } = E.trapBreakers(domain(), r);
     const n = (falseIn !== null) + (falseOut !== null);
-    $('doneTrap').innerHTML = `Looks like <b>${r.trapName}</b> at first. ${n > 1 ? 'These break it.' : 'This breaks it.'}`;
+    $('doneTrap').innerHTML = `Easy to mistake for <b>${r.trapName}</b>. ${n > 1 ? 'These two prove otherwise.' : 'This one proves otherwise.'}`;
     const br = [];
     if (falseIn !== null) br.push(`<span class="breaker out">${tileHtml(falseIn)}<small>out</small></span>`);
     if (falseOut !== null) br.push(`<span class="breaker in">${tileHtml(falseOut)}<small>in</small></span>`);
@@ -214,7 +214,7 @@
 
   /* ---------- actions ---------- */
   function probe(item) {
-    if (onBoard().has(item)) { toast('Already through the gate'); return; }
+    if (onBoard().has(item)) { toast('Already tested'); return; }
     const isIn = rule().test(item);
     S.strokes += 1;
     S.log.push({ item, in: isIn, kind: 'test' });
@@ -259,7 +259,7 @@
       S.phase = 'play';
       save();
       const note = $('proveNote');
-      note.textContent = `${right} of 6. These six go through the gate. +2 tests.`;
+      note.textContent = `${right} of 6. These six join the board. +2 tests.`;
       note.hidden = false;
       setTimeout(() => render(), reduceMotion ? 800 : 1800);
     }
@@ -308,11 +308,11 @@
     const avg = st.solved ? st.overPar / st.solved : 0;
     const avgStr = st.solved ? (avg > 0 ? `+${avg.toFixed(1)}` : avg < 0 ? `−${Math.abs(avg).toFixed(1)}` : 'Par') : '–';
     const fals = st.tests ? Math.round((100 * st.testsOut) / st.tests) : 0;
-    const tiles = [[st.played, 'Played'], [`${pct}%`, 'Solved'], [st.streak, 'Streak'], [st.best, 'Best streak'], [avgStr, 'Avg vs par'], [st.tests ? `${fals}%` : '–', 'Falsifier']];
+    const tiles = [[st.played, 'Played'], [`${pct}%`, 'Solved'], [st.streak, 'Streak'], [st.best, 'Best streak'], [avgStr, 'Avg vs par'], [st.tests ? `${fals}%` : '–', 'Out tests']];
     $('statTiles').innerHTML = tiles.map(([v, l]) => `<div class="tile-stat"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
     $('statDomains').innerHTML = D.list.map((d) => { const x = (st.domains || {})[d.id] || { played: 0, solved: 0 }; return `<div><span>${d.name}</span><b>${x.solved} / ${x.played}</b></div>`; }).join('');
     $('statNote').innerHTML = st.tests
-      ? `<b>Falsifier</b> is the share of your tests that came back <b>out</b>. Testing what you expect to fail is how you catch the trap. Sharp players sit above 50%.`
+      ? `<b>Out tests</b> is the share of your tests that came back <b>out</b>. Testing things you expect to fail is how you find the real rule. Aim for more than half.`
       : `Finish today's rule and your stats show up here.`;
   }
 

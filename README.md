@@ -1,7 +1,7 @@
 # Rule
 
-A daily deduction game. Eight things are already sorted into **In** and **Out** by a secret rule.
-Send your own through the gate, then prove you know the rule by sorting six more.
+A daily puzzle. Eight things are already sorted into **In** and **Out** by a secret rule.
+Test your own to work out the rule, then prove you know it by sorting six more.
 
 Three domains take turns through the week: **numbers**, **words** and **shapes** (sides, colour, fill and size).
 
@@ -32,7 +32,7 @@ Deploy on Cloudflare Workers (static assets): connect the repo under Workers & P
 | `words.js` | Word pool, 2,600 common English words |
 | `engine.js` | Seeded board generator, prove set, weekday schedule |
 | `icons.js` | The ten Nucleo UI icons in use |
-| `game.js` | Game loop, the Gate board, shape builder, scoring, share text, stats |
+| `game.js` | Game loop, the board, shape builder, scoring, share text, stats |
 
 ## Adding a rule or a domain
 

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Rule</title>
-  <meta name="description" content="A daily deduction game. Numbers, words or shapes: some get in, some stay out. Find the rule, then prove it.">
+  <meta name="description" content="A daily puzzle. Some numbers, words or shapes follow a secret rule and some don't. Work out the rule.">
   <meta name="theme-color" content="#f6f4ef" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#111311" media="(prefers-color-scheme: dark)">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,22 +30,22 @@
     <section id="viewPlay">
       <p class="lead" id="lead"></p>
       <div class="gate-head">
-        <div class="gh in"><b>In</b><span>fits the rule</span></div>
-        <div class="gh out"><b>Out</b><span>doesn't fit</span></div>
+        <div class="gh in"><b>In</b><span>follows the rule</span></div>
+        <div class="gh out"><b>Out</b><span>doesn't</span></div>
       </div>
       <div class="gate" id="gate"></div>
       <div class="node" id="node">
         <span class="orb"></span>
-        <span class="node-label">The gate</span>
-        <span class="node-sub" id="nodeSub">Try anything</span>
+        <span class="node-label">Your turn</span>
+        <span class="node-sub" id="nodeSub">Try any number below</span>
       </div>
     </section>
 
     <!-- PROVE -->
     <section id="viewProve" hidden>
       <div class="prove-head">
-        <h2>Prove it.</h2>
-        <p>Sort all six. Every one has to be right.</p>
+        <h2>Show you know it.</h2>
+        <p>Sort these six. You need all six right.</p>
       </div>
       <div class="prove-grid" id="proveGrid"></div>
       <div class="prove-note" id="proveNote" hidden></div>
@@ -108,7 +108,7 @@
         <span class="strokes" id="strokes"></span>
         <div class="buttons">
           <button class="btn ghost" id="btnGiveUp" type="button" data-icon="flag"><span>Give up</span></button>
-          <button class="btn primary" id="btnProve" type="button" data-icon="lightbulb"><span>I know it</span></button>
+          <button class="btn primary" id="btnProve" type="button" data-icon="lightbulb"><span>I've got it</span></button>
         </div>
       </div>
     </div>
@@ -117,11 +117,11 @@
   <dialog id="dlgHelp">
     <h2>How to play</h2>
     <div class="steps">
-      <div class="step"><div class="n a">1</div><div><h3>Look</h3><p>Eight things are already sorted through the gate. One secret rule decides who gets in.</p></div></div>
-      <div class="step"><div class="n b">2</div><div><h3>Test</h3><p>Send anything you like through the gate. Every test costs one point.</p></div></div>
-      <div class="step"><div class="n c">3</div><div><h3>Prove</h3><p>Sure? Sort six new things. All six right and you've cracked it.</p></div></div>
+      <div class="step"><div class="n a">1</div><div><h3>Look</h3><p>Eight things are already sorted into In and Out. A secret rule decides which is which.</p></div></div>
+      <div class="step"><div class="n b">2</div><div><h3>Test</h3><p>Type anything you like and see whether it's in or out. Each test costs one point.</p></div></div>
+      <div class="step"><div class="n c">3</div><div><h3>Prove</h3><p>Think you've got it? Sort six new things. Get all six right and you're done.</p></div></div>
     </div>
-    <div class="tip"><b>Tip.</b> The obvious rule is usually a trap. Test things you expect to be <b>out</b>.</div>
+    <div class="tip"><b>Tip.</b> The first rule that comes to mind is usually wrong. Test things you think are <b>out</b>.</div>
     <div class="tip small">Numbers, words and shapes take turns through the week.</div>
     <div class="row"><button class="btn primary" id="btnHelpClose">Let's go</button></div>
   </dialog>
