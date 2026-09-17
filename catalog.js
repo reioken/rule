@@ -3,10 +3,10 @@ const digits = (n) => String(n).split('').map(Number);
 
 export const numbersView = {
   id: 'numbers', name: 'Numbers', noun: 'number', input: 'text',
-  placeholder: 'Try any number', inputMode: 'numeric', maxLength: 6,
+  placeholder: 'Try a number', inputMode: 'numeric', maxLength: 6,
   parse(raw) {
     const s = String(raw).trim();
-    if (!/^\d{1,6}$/.test(s)) return { error: 'Whole numbers only' };
+    if (!/^\d{1,6}$/.test(s)) return { error: 'Use one whole number.' };
     return { item: Number.parseInt(s, 10) };
   },
   render(n) { return `<span class="t-num">${n}</span>`; },
@@ -15,7 +15,7 @@ export const numbersView = {
 
 export const wordsView = {
   id: 'words', name: 'Words', noun: 'word', input: 'text',
-  placeholder: 'Try any word', inputMode: 'text', maxLength: 12,
+  placeholder: 'Try a word', inputMode: 'text', maxLength: 12,
   parse(raw) {
     const s = String(raw).trim().toLowerCase();
     if (!/^[a-z]{2,12}$/.test(s)) return { error: 'Letters only, 2 to 12' };
@@ -63,15 +63,16 @@ export const shapesView = {
 
 export const LETTERS = [...'abcdefghijklmnopqrstuvwxyz'];
 export const lettersView = {
-  id: 'letters', name: 'Letters', noun: 'letter', input: 'pick',
+  id: 'letters', name: 'Letters', noun: 'letter', input: 'text',
+  placeholder: 'Try a letter', inputMode: 'text', maxLength: 1,
   choices: LETTERS,
   parse(raw) {
-    const s = String(raw).trim().toLowerCase();
-    if (!/^[a-z]$/.test(s)) return { error: 'One letter' };
-    return { item: s };
+    const s = String(raw).trim();
+    if (!/^[A-Za-z]$/.test(s)) return { error: 'Use one letter.' };
+    return { item: s.toLowerCase() };
   },
-  render(ch) { return `<span class="t-letter">${String(ch).toUpperCase()}</span>`; },
-  label(ch) { return String(ch).toUpperCase(); },
+  render(ch) { return `<span class="t-letter">${String(ch)}</span>`; },
+  label(ch) { return String(ch); },
 };
 
 export const EMOJIS = [
@@ -143,7 +144,7 @@ export const colorsView = {
   },
   render(id) {
     const c = colorById[id] || { hex: '#888', name: id };
-    return `<span class="t-color" style="background:${c.hex}" title="${c.name}"></span>`;
+    return `<span class="t-color" style="background:${c.hex}" title="${c.name}"><span class="vh">${c.name}</span></span>`;
   },
   label(id) { return (colorById[id] || { name: id }).name; },
 };
@@ -173,9 +174,14 @@ export const cardsView = {
   render(k) {
     const { suit } = cardParts(k);
     const red = suit === 'H' || suit === 'D';
-    return `<span class="t-card ${red ? 'red' : 'blk'}">${cardFace(k)}</span>`;
+    const suitName = { S: 'spades', H: 'hearts', D: 'diamonds', C: 'clubs' }[suit] || suit;
+    return `<span class="t-card ${red ? 'red' : 'blk'}"><b>${RANK_MARK[cardParts(k).rank] || cardParts(k).rank}</b><i>${SUIT_MARK[suit]}</i><span class="vh">${cardFace(k)} ${suitName}</span></span>`;
   },
-  label(k) { return cardFace(k); },
+  label(k) {
+    const { rank, suit } = cardParts(k);
+    const suitName = { S: 'spades', H: 'hearts', D: 'diamonds', C: 'clubs' }[suit] || suit;
+    return `${RANK_MARK[rank] || rank} of ${suitName}`;
+  },
 };
 
 export const RuleCatalog = {
@@ -183,5 +189,12 @@ export const RuleCatalog = {
   letters: lettersView, emoji: emojiView, colors: colorsView, cards: cardsView,
   list: [numbersView, wordsView, shapesView, lettersView, emojiView, colorsView, cardsView],
 };
+
+export function renderPhoto(image) {
+  const pos = image && image.focalPoint ? `${image.focalPoint.x}% ${image.focalPoint.y}%` : '50% 50%';
+  const alt = String((image && image.alt) || '').replace(/"/g, '&quot;');
+  const src = image && image.src ? image.src : '';
+  return `<img class="t-photo" src="${src}" alt="${alt}" style="object-position:${pos}">`;
+}
 
 export { digits };

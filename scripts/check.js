@@ -8,6 +8,10 @@ import { RuleDomains as D } from '../domains.js';
 import * as E from '../engine.js';
 import { handleApi } from '../api.js';
 import { WEEK } from '../schedule.js';
+import {
+  starsFor, starsStillPossible, shareText, alreadyOnBoard, proveReady,
+  needAnotherLook, normalizePhase,
+} from '../logic.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -61,7 +65,7 @@ for (const domain of D.list) {
 }
 
 /* Client-facing files must not ship rule predicates or reveal copy. */
-const clientFiles = ['catalog.js', 'game.js', 'schedule.js', 'icons.js', 'index.html'];
+const clientFiles = ['catalog.js', 'game.js', 'schedule.js', 'icons.js', 'index.html', 'logic.js'];
 for (const f of clientFiles) {
   const text = readFileSync(join(root, f), 'utf8');
   for (const domain of D.list) {
@@ -120,6 +124,21 @@ if (practice.mode !== 'practice' || practice.ruleIdx == null || !practice.eviden
 const practiceKind = await (await call('/api/round', { mode: 'practice', day: 0, domainId: 'emoji' })).json();
 if (practiceKind.domainId !== 'emoji') fail('api practice domain', `wanted emoji, got ${practiceKind.domainId}`);
 if (practiceKind.rule || practiceKind.detail || practiceKind.trapName) fail('api practice domain', 'practice round leaked the rule');
+
+if (starsFor({ result: 'gaveup', strokes: 0, par: 4 }) !== 0) fail('stars', 'give up should be 0');
+if (starsFor({ result: 'solved', strokes: 4, par: 4 }) !== 3) fail('stars', 'at par should be 3');
+if (starsFor({ result: 'solved', strokes: 6, par: 4 }) !== 2) fail('stars', 'par+2 should be 2');
+if (starsFor({ result: 'solved', strokes: 7, par: 4 }) !== 1) fail('stars', 'over par+2 should be 1');
+if (starsStillPossible(5, 4) !== 2) fail('stars', 'live status should match remaining band');
+if (normalizePhase('play') !== 'explore' || normalizePhase('done') !== 'result') fail('phase', 'legacy phases should map');
+if (alreadyOnBoard([{ item: 12, in: true }], [], 12) !== true) fail('dup', 'seed item should count as tested');
+if (alreadyOnBoard([], [{ item: 'cat', kind: 'test' }], 'cat') !== true) fail('dup', 'log item should count as tested');
+if (proveReady([{ item: 1 }, { item: 2 }], { 1: true }) !== false) fail('prove', 'incomplete answers should not be ready');
+if (proveReady([{ item: 1 }, { item: 2 }], { 1: true, 2: false }) !== true) fail('prove', 'complete answers should be ready');
+if (needAnotherLook(2) !== 'Two need another look.') fail('copy', 'wrong-count copy mismatch');
+const share = shareText({ mode: 'daily', day: 0, strokes: 4, stars: 2, result: 'solved' });
+if (!share.startsWith('Deductidle #1') || !share.includes('4 tests · 6/6')) fail('share', `unexpected share text: ${share}`);
+if (/\d{2,}/.test(share.split('\n')[1].replace('6/6', '').replace('4 tests', ''))) fail('share', 'share text leaked extra numbers');
 
 console.log(`${boards} boards checked, ${bad} violation${bad === 1 ? '' : 's'}`);
 process.exit(bad ? 1 : 0);

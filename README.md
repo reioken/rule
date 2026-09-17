@@ -5,7 +5,7 @@ Test your own to work out the rule, then prove you know it by sorting six more.
 
 Play at [rule.dennis-bierreth.workers.dev](https://rule.dennis-bierreth.workers.dev).
 
-Domains take turns through the week: **numbers**, **words**, **shapes**, **emoji** and **cards**. Thursday is always numbers. **Letters** and **colors** are in the practice switcher so they can be tested without needing a huge pool.
+The play screen is two equal columns of tokens. No extra metaphor. Thursday is always numbers. **Letters** and **colors** are in the practice switcher so they can be tested without needing a huge pool.
 
 - One rule per day, the same for everyone.
 - Every test costs one. Solve within the rule's target for three stars.
@@ -31,9 +31,10 @@ Deploy on Cloudflare Workers (static assets + the Worker): connect the repo unde
 
 | File | What it does |
 | --- | --- |
-| `index.html` | Page and the three views: play, prove, done |
-| `styles.css` | Visual system, light and dark |
+| `index.html` | Page: explore, prove, result |
+| `styles.css` | Evidence-board visual system, light and dark |
 | `catalog.js` | Public domain UI: item renderer, typed input, pickers. No rules. |
+| `logic.js` | Stars, share text, phase helpers. Safe on the client. |
 | `schedule.js` | Launch date and weekday domain map |
 | `words.js` | Word pool, ~2,500 common English words. Server-only. |
 | `domains.js` | Rule libraries with traps and item pools. Server-only. |
