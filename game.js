@@ -2,7 +2,7 @@
 (() => {
   const P = window.RulePuzzles;
   const $ = (id) => document.getElementById(id);
-  const SHARE_URL = ''; // set to the public URL once deployed, it's appended to the share text
+  const SHARE_URL = 'https://rule.dennis-bierreth.workers.dev';
 
   /* ---------- storage (per-browser, best effort) ---------- */
   const store = {
