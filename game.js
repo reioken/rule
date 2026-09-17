@@ -148,10 +148,11 @@
     $('doneDetail').textContent = pz.detail;
 
     const { falseIn, falseOut } = P.trapBreakers(pz);
-    let trap = `Looks like <b>${pz.trapName}</b> at first.`;
-    if (falseIn !== null) trap += ` But <span class="num">${falseIn}</span> is out.`;
-    if (falseOut !== null) trap += ` And <span class="num">${falseOut}</span> is in.`;
-    $('doneTrap').innerHTML = trap;
+    const chips = [];
+    if (falseIn !== null) chips.push(`<span class="chip out">${falseIn}<small>out</small></span>`);
+    if (falseOut !== null) chips.push(`<span class="chip in">${falseOut}<small>in</small></span>`);
+    $('doneTrap').innerHTML = `Looks like <b>${pz.trapName}</b> at first. ${chips.length > 1 ? 'These break it.' : 'This breaks it.'}`
+      + `<div class="breakers">${chips.join('')}</div>`;
 
     $('shareText').textContent = shareText();
     $('btnPractice').textContent = S.mode === 'daily' ? 'Practice round' : 'Another practice round';

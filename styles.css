@@ -399,9 +399,13 @@ p { margin: 0; }
 .info-card .eyebrow { font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
 .info-card h3 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; margin-top: 4px; }
 .info-card p { color: var(--ink-2); margin-top: 6px; }
-.info-card.rule { border-left: 6px solid var(--in); }
-.info-card.trap { border-left: 6px solid var(--out); }
-.info-card .num { font-family: var(--display); font-weight: 800; color: var(--ink); }
+.info-card.rule .eyebrow { color: var(--in-ink); }
+.info-card.trap .eyebrow { color: var(--out-ink); }
+.breakers { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.breakers .chip { animation: none; border-style: solid; }
+.breakers .chip.in { background: var(--in-soft); color: var(--in-ink); border-color: var(--in-line); }
+.breakers .chip.out { background: var(--out-soft); color: var(--out-ink); border-color: var(--out-line); }
+.breakers .chip small { font-family: var(--body); font-weight: 700; font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; margin-left: 8px; opacity: 0.8; }
 .share {
   padding: 16px 18px;
   border-radius: var(--radius);
