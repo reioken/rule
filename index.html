@@ -16,10 +16,8 @@
 <body>
   <div class="game-shell">
     <header class="site-header">
-      <div class="brand">
-        <p class="wordmark">Deductidle<span class="dot">.</span></p>
-        <p class="puzzle-meta" id="meta">Daily 1 · Numbers</p>
-      </div>
+      <p class="wordmark">Deductidle<span class="dot">.</span></p>
+      <p class="puzzle-meta" id="meta">Daily 1 · Numbers</p>
       <div class="header-actions">
         <button class="iconbtn" id="btnTheme" type="button" aria-label="Switch theme" data-icon="moon"></button>
         <button class="iconbtn" id="btnHelp" type="button" aria-label="Help" data-icon="circle-question"></button>
@@ -55,29 +53,31 @@
       <div class="prove-grid" id="proveGrid"></div>
     </div>
 
-    <div class="status-row" id="statusRow">
-      <p id="testCount">Tests 0</p>
-      <p id="starStatus"><span class="vh">3 stars still possible</span><span aria-hidden="true">★★★ still possible</span></p>
+    <div class="play-dock">
+      <div class="status-row" id="statusRow">
+        <p id="testCount">Tests 0</p>
+        <p id="starStatus"><span class="vh">3 stars still possible</span><span aria-hidden="true">★★★ still possible</span></p>
+      </div>
+
+      <section class="test-panel" id="testPanel">
+        <p class="feedback" id="feedback" aria-live="polite"></p>
+        <form id="probeForm">
+          <label class="vh" for="probeInput" id="probeLabel">Try a number</label>
+          <input id="probeInput" maxlength="12" autocomplete="off">
+          <button class="btn primary" id="btnTextTest" type="submit">Test</button>
+        </form>
+        <div id="tray" class="tray" hidden></div>
+        <button class="btn primary" id="btnTrayTest" type="button" hidden>Test</button>
+        <button class="btn ghost" id="btnProve" type="button">I know the rule</button>
+        <button class="btn quiet" id="btnGiveUp" type="button">Give up</button>
+      </section>
+
+      <section class="prove-actions" id="proveActions" hidden>
+        <p class="feedback" id="proveFeedback" aria-live="polite"></p>
+        <button class="btn primary" id="btnCheck" type="button" disabled>Check all six</button>
+        <button class="btn ghost" id="btnBack" type="button">Keep testing</button>
+      </section>
     </div>
-
-    <section class="test-panel" id="testPanel">
-      <p class="feedback" id="feedback" aria-live="polite"></p>
-      <form id="probeForm">
-        <label class="vh" for="probeInput" id="probeLabel">Try a number</label>
-        <input id="probeInput" maxlength="12" autocomplete="off">
-        <button class="btn primary" id="btnTextTest" type="submit">Test</button>
-      </form>
-      <div id="tray" class="tray" hidden></div>
-      <button class="btn primary" id="btnTrayTest" type="button" hidden>Test</button>
-      <button class="btn ghost" id="btnProve" type="button">I know the rule</button>
-      <button class="btn quiet" id="btnGiveUp" type="button">Give up</button>
-    </section>
-
-    <section class="prove-actions" id="proveActions" hidden>
-      <p class="feedback" id="proveFeedback" aria-live="polite"></p>
-      <button class="btn primary" id="btnCheck" type="button" disabled>Check all six</button>
-      <button class="btn ghost" id="btnBack" type="button">Keep testing</button>
-    </section>
 
     <section class="result-panel" id="resultPanel" hidden>
       <p class="result-stars" id="doneScore" aria-label="Stars"></p>
