@@ -33,7 +33,7 @@ export function shareText({ mode, day, domainName, levelName, stars, result, log
   const tests = log.filter((e) => e.kind === 'test');
   const row = tests.map((e) => (e.in ? '🟩' : '⬛')).join('');
   const marks = '❌'.repeat(proveFails) + (result === 'solved' ? '✅' : result === 'gaveup' ? '🏳️' : '');
-  return [head, `${row || '·'} ${marks}`.trim(), SHARE_URL].join('\n');
+  return [head, [row, marks].filter(Boolean).join(' ') || '·', SHARE_URL].join('\n');
 }
 
 export function alreadyOnBoard(evidence = [], log = [], item) {

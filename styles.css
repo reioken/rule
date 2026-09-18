@@ -162,36 +162,37 @@ body::after {
 .gh span { font-size: 11px; line-height: 14px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); font-weight: 600; }
 .gh.in { grid-column: 1; text-align: right; color: var(--in); padding-right: 8px; }
 .gh.out { grid-column: 3; color: var(--out); padding-left: 8px; }
-.gate { position: relative; display: grid; gap: 6px; padding-block: 10px 4px; min-height: 100px; }
+.gate { position: relative; display: grid; gap: 6px; padding-block: 10px 12px; min-height: 100px; }
 .gate::before {
-  content: ''; position: absolute; left: 50%; top: 0; bottom: -18px; width: 2px; transform: translateX(-50%);
-  background: linear-gradient(to bottom, transparent, var(--spine) 12%, var(--spine) 88%, var(--in));
+  content: ''; position: absolute; left: 50%; top: 0; bottom: -24px; width: 2px; transform: translateX(-50%);
+  background: linear-gradient(to bottom, transparent 0, var(--spine) 14px, var(--spine) calc(100% - 26px), var(--in) 100%);
 }
 .gate::after {
-  content: ''; position: absolute; left: 50%; bottom: -18px; width: 40px; height: 60px; transform: translate(-50%, 0);
-  background: radial-gradient(closest-side, var(--in-glow), transparent); opacity: 0.6; filter: blur(6px); pointer-events: none;
+  content: ''; position: absolute; left: 50%; bottom: -30px; width: 48px; height: 48px; transform: translate(-50%, 0);
+  background: radial-gradient(closest-side, var(--in-glow), transparent); opacity: 0.55; filter: blur(8px); pointer-events: none;
 }
 .grow { display: grid; grid-template-columns: 1fr 32px 1fr; align-items: center; }
 .grow .token { grid-row: 1; width: auto; min-width: 72px; max-width: 100%; height: 50px; padding: 4px 14px; }
-.grow.in .token { grid-column: 1; justify-self: end; margin-right: 6px; }
-.grow.out .token { grid-column: 3; justify-self: start; margin-left: 6px; }
+.grow.in .token { grid-column: 1; justify-self: end; }
+.grow.out .token { grid-column: 3; justify-self: start; }
+/* the tick: a short connector from the spine to the token's edge, and a small bead on the spine */
 .tick { grid-column: 2; grid-row: 1; position: relative; height: 26px; }
-.tick::after {
-  content: ''; position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; border-radius: 50%;
-  transform: translate(-50%, -50%); background: var(--spine); border: 2px solid var(--canvas);
-}
-.tick::before { content: ''; position: absolute; top: 50%; height: 2px; width: 20px; background: var(--spine); transform: translateY(-50%); transform-origin: center; }
+.tick::before { content: ''; position: absolute; top: 50%; height: 2px; width: 16px; background: var(--spine); transform: translateY(-50%); }
 .grow.in .tick::before { right: 50%; transform-origin: right center; }
 .grow.out .tick::before { left: 50%; transform-origin: left center; }
-.grow.mine.in .tick::after, .grow.mine.in .tick::before { background: var(--in); }
-.grow.mine.out .tick::after, .grow.mine.out .tick::before { background: var(--out); }
-.grow.mine.in .tick::after { box-shadow: 0 0 0 4px var(--in-tint), 0 0 14px var(--in-glow); }
-.grow.mine.out .tick::after { box-shadow: 0 0 0 4px var(--out-tint), 0 0 14px var(--out-glow); }
+.tick::after { content: ''; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; border-radius: 50%; transform: translate(-50%, -50%); background: var(--spine); }
+.grow.given .tick::after { background: var(--line-strong); }
+.grow.mine .tick::after { width: 10px; height: 10px; }
+.grow.mine.in .tick::before, .grow.mine.in .tick::after { background: var(--in); }
+.grow.mine.out .tick::before, .grow.mine.out .tick::after { background: var(--out); }
+.grow.mine.in .tick::after { box-shadow: 0 0 12px var(--in-glow); }
+.grow.mine.out .tick::after { box-shadow: 0 0 12px var(--out-glow); }
 .grow.given .token { opacity: 0.86; }
+.grow.prove .token { border-style: dashed; }
 .grow.mine.in .token { background: linear-gradient(180deg, var(--in-tint), transparent), var(--surface-strong); border-color: color-mix(in srgb, var(--in) 55%, transparent); color: var(--in); box-shadow: 0 10px 24px -14px var(--in-glow), var(--shadow-1); }
 .grow.mine.out .token { background: linear-gradient(180deg, var(--out-tint), transparent), var(--surface-strong); border-color: color-mix(in srgb, var(--out) 55%, transparent); color: var(--out); box-shadow: 0 10px 24px -14px var(--out-glow), var(--shadow-1); }
 .grow.mine .token .t-card.red, .grow.mine .token .t-card { color: inherit; }
-.grow.latest .token { box-shadow: 0 0 0 2px currentColor, 0 12px 30px -12px currentColor; }
+.grow.latest .token { box-shadow: 0 0 0 1.5px currentColor, 0 12px 30px -12px currentColor; }
 .grow.latest { scroll-margin-block: 100px; }
 .grow.enter .token { animation: arrive 520ms var(--spring) both; }
 .grow.enter.in .token { --from: 28px; }
@@ -200,7 +201,7 @@ body::after {
 @keyframes arrive { from { opacity: 0; transform: translateX(var(--from, 0)) scale(0.85); } to { opacity: 1; transform: none; } }
 @keyframes draw { from { transform: translateY(-50%) scaleX(0); } to { transform: translateY(-50%) scaleX(1); } }
 
-.node { display: grid; justify-items: center; padding-top: 14px; position: relative; }
+.node { display: grid; justify-items: center; padding-top: 16px; position: relative; }
 .orb {
   width: 16px; height: 16px; border-radius: 50%; position: relative;
   background: radial-gradient(circle at 35% 35%, #fff, var(--in) 45%, var(--in-deep));
@@ -209,7 +210,7 @@ body::after {
 }
 .node.hit-in .orb { box-shadow: 0 0 0 10px var(--in-tint), 0 0 40px var(--in-glow); }
 .node.hit-out .orb { background: radial-gradient(circle at 35% 35%, #fff, var(--out) 45%, var(--out-deep)); box-shadow: 0 0 0 10px var(--out-tint), 0 0 40px var(--out-glow); }
-.node .ring { position: absolute; top: 14px; left: 50%; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; border: 2px solid var(--in); pointer-events: none; animation: ring 800ms var(--settle) both; }
+.node .ring { position: absolute; top: 16px; left: 50%; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; border: 2px solid var(--in); pointer-events: none; animation: ring 800ms var(--settle) both; }
 .node .ring.out { border-color: var(--out); }
 @keyframes ring { from { transform: scale(0.6); opacity: 0.9; } to { transform: scale(5); opacity: 0; } }
 @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
@@ -253,7 +254,8 @@ body::after {
 .prove-item.correct { border-color: var(--in); background: linear-gradient(180deg, var(--in-tint), transparent); box-shadow: 0 0 0 1px var(--in-tint), 0 12px 30px -16px var(--in-glow); }
 .prove-item.incorrect { border-color: var(--out); background: linear-gradient(180deg, var(--out-tint), transparent); animation: refuse 260ms var(--settle); }
 @keyframes refuse { 0%, 100% { transform: translateX(0); } 30% { transform: translateX(5px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(2px); } }
-.prove-item .truth { font-size: 12px; line-height: 16px; font-weight: 600; min-height: 16px; color: var(--out); }
+.prove-item .truth { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--out); }
+.prove-item .truth:empty { display: none; }
 .prove-item.correct .truth { color: var(--in); }
 .choice { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--item); border-radius: 999px; padding: 3px; }
 .choice label {
@@ -386,6 +388,7 @@ dialog .btn { width: 100%; }
   .gate-wrap { margin-top: 22px; }
   .gate { gap: 8px; }
   .grow .token { height: 58px; min-width: 96px; padding: 6px 18px; }
+  .tick::before { width: 16px; }
   .t-num { font-size: 30px; } .t-word { font-size: 22px; } .t-card { font-size: 27px; }
   .play-dock { margin-top: 22px; position: sticky; top: 24px; align-self: start; }
   .prove-grid { grid-template-columns: repeat(3, 1fr); }

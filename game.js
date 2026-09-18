@@ -171,7 +171,7 @@ function renderBoard(latestItem) {
   for (const r of rows) {
     const el = document.createElement('div');
     const latest = latestItem !== undefined && String(r.item) === String(latestItem);
-    el.className = `grow ${r.in ? 'in' : 'out'} ${r.kind === 'given' ? 'given' : 'mine'}${latest ? ' latest enter' : ''}`;
+    el.className = `grow ${r.in ? 'in' : 'out'} ${r.kind === 'given' ? 'given' : 'mine'}${r.kind === 'prove' ? ' prove' : ''}${latest ? ' latest enter' : ''}`;
     el.appendChild(tokenNode(r.item, { compact: true }));
     const tick = document.createElement('i');
     tick.className = 'tick';
