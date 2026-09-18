@@ -2,7 +2,7 @@
    The board is always six examples, three in and three out. Every puzzle is one hidden rule.
    Of many candidate opening sets, keep the one that leaves the most wrong rules alive. */
 import { RuleDomains } from './domains.js';
-import { LAUNCH_UTC, domainFor, LEVELS_PER_DAY } from './schedule.js';
+import { LAUNCH_UTC, domainFor, LEVELS_PER_DAY, LEVEL_NAMES } from './schedule.js';
 
 export { LAUNCH_UTC, domainFor, dayIndex, LEVEL_NAMES, LEVELS_PER_DAY } from './schedule.js';
 
@@ -26,9 +26,9 @@ const pool = (domain, rule, rng) => shuffle(domain.pool(rule.range), rng);
 /* Same board every day: six examples, three in and three out. Each of the three daily puzzles
    is one hidden rule, a different kind of thing. Slot numbers 1–3 are only which puzzle of the day. */
 export const LEVELS = {
-  1: { evidence: 6, name: 'Easy' },
-  2: { evidence: 6, name: 'Medium' },
-  3: { evidence: 6, name: 'Hard' },
+  1: { evidence: 6, name: LEVEL_NAMES[1] },
+  2: { evidence: 6, name: LEVEL_NAMES[2] },
+  3: { evidence: 6, name: LEVEL_NAMES[3] },
 };
 export const levelOf = () => 1;
 export const evidenceCountFor = () => 6;

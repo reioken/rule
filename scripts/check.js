@@ -10,7 +10,7 @@ import { handleApi } from '../api.js';
 import { DAILY_DOMAINS, LEVELS_PER_DAY, dayPlan } from '../schedule.js';
 import {
   starsFor, starsStillPossible, shareText, dayShareText, alreadyOnBoard, proveReady,
-  needAnotherLook, normalizePhase,
+  needAnotherLook, normalizePhase, evidenceLede,
 } from '../logic.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -117,15 +117,16 @@ async function call(path, body, method) {
 
 const daily = await (await call('/api/round?day=0&mode=daily')).json();
 if (daily.domainId !== 'numbers') fail('api daily', `day 0 domain is ${daily.domainId}, want numbers`);
+if (daily.levelName !== 'Rule 1') fail('api daily', `day 0 slot 1 name is ${daily.levelName}, want Rule 1`);
 if (!daily.evidence || daily.evidence.length !== E.LEVELS[daily.level].evidence) fail('api daily', 'day 0 evidence count does not match its level');
 if (daily.rule || daily.detail || daily.trapName || daily.ruleIdx != null) fail('api daily', 'daily round leaked the rule');
 if (typeof daily.par !== 'number') fail('api daily', 'daily round missing par');
 
 const medium = await (await call('/api/round?day=0&mode=daily&level=2')).json();
-if (medium.level !== 2 || medium.domainId !== 'words') fail('api daily', `day 0 slot 2 is ${medium.levelName} ${medium.domainId}, want words`);
+if (medium.level !== 2 || medium.domainId !== 'words' || medium.levelName !== 'Rule 2') fail('api daily', `day 0 slot 2 is ${medium.levelName} ${medium.domainId}, want Rule 2 words`);
 if (medium.joined) fail('api daily', 'round should not expose a join');
 const hardR = await (await call('/api/round?day=0&mode=daily&level=3')).json();
-if (hardR.level !== 3 || hardR.domainId !== 'cards') fail('api daily', `day 0 slot 3 is ${hardR.levelName} ${hardR.domainId}, want cards`);
+if (hardR.level !== 3 || hardR.domainId !== 'cards' || hardR.levelName !== 'Rule 3') fail('api daily', `day 0 slot 3 is ${hardR.levelName} ${hardR.domainId}, want Rule 3 cards`);
 if (hardR.joined) fail('api daily', 'round should not expose a join');
 if (medium.seed === daily.seed || hardR.seed === medium.seed) fail('api daily', 'the three puzzles of a day share a seed');
 const badLevel = await (await call('/api/round?day=0&mode=daily&level=9')).json();
@@ -174,19 +175,21 @@ if (alreadyOnBoard([{ item: 12, in: true }], [], 12) !== true) fail('dup', 'seed
 if (alreadyOnBoard([], [{ item: 'cat', kind: 'test' }], 'cat') !== true) fail('dup', 'log item should count as tested');
 if (proveReady([{ item: 1 }, { item: 2 }], { 1: true }) !== false) fail('prove', 'incomplete answers should not be ready');
 if (proveReady([{ item: 1 }, { item: 2 }], { 1: true, 2: false }) !== true) fail('prove', 'complete answers should be ready');
-if (needAnotherLook(2) !== 'Two need another look.') fail('copy', 'wrong-count copy mismatch');
-const share = shareText({ mode: 'daily', day: 0, domainName: 'Numbers', stars: 2, result: 'solved', log: [{ in: true, kind: 'test' }, { in: false, kind: 'test' }], proveFails: 1 });
+if (needAnotherLook(2) !== 'Two are wrong.') fail('copy', 'wrong-count copy mismatch');
+if (needAnotherLook(1) !== 'One is wrong.') fail('copy', 'one-wrong copy mismatch');
+if (evidenceLede(6) !== 'Three are in. Three are out.') fail('copy', 'evidence lede mismatch');
+const share = shareText({ mode: 'daily', day: 0, domainName: 'Numbers', levelName: 'Rule 1', stars: 2, result: 'solved', log: [{ in: true, kind: 'test' }, { in: false, kind: 'test' }], proveFails: 1 });
 const shareLines = share.split('\n');
-if (shareLines[0] !== 'Deductidle #1 · Numbers · ★★☆') fail('share', `unexpected share head: ${shareLines[0]}`);
+if (shareLines[0] !== 'Deductidle #1 · Rule 1 · Numbers · ★★☆') fail('share', `unexpected share head: ${shareLines[0]}`);
 if (shareLines[1] !== '🟩⬛ ❌✅') fail('share', `unexpected share row: ${shareLines[1]}`);
 if (!/^https:\/\//.test(shareLines[2] || '')) fail('share', 'share text has no link');
 const dayShare = dayShareText({ day: 1, slots: [
-  { domainName: 'Emoji', stars: 3, result: 'solved', log: [{ in: true, kind: 'test' }], proveFails: 0 },
-  { domainName: 'Cards', stars: 0, result: 'gaveup', log: [], proveFails: 1 },
-  { domainName: 'Words', stars: 1, result: 'solved', log: [{ in: false, kind: 'test' }], proveFails: 0 },
+  { levelName: 'Rule 1', domainName: 'Emoji', stars: 3, result: 'solved', log: [{ in: true, kind: 'test' }], proveFails: 0 },
+  { levelName: 'Rule 2', domainName: 'Cards', stars: 0, result: 'gaveup', log: [], proveFails: 1 },
+  { levelName: 'Rule 3', domainName: 'Words', stars: 1, result: 'solved', log: [{ in: false, kind: 'test' }], proveFails: 0 },
 ] }).split('\n');
 if (dayShare[0] !== 'Deductidle #2 · 4/9 ★' || dayShare.length !== 5) fail('share', `unexpected day share: ${dayShare.join(' | ')}`);
-if (dayShare[2] !== 'Cards ☆☆☆ ❌🏳️') fail('share', `unexpected day share line: ${dayShare[2]}`);
+if (dayShare[2] !== 'Rule 2 · Cards ☆☆☆ ❌🏳️') fail('share', `unexpected day share line: ${dayShare[2]}`);
 
 console.log(`${boards} boards checked, ${bad} violation${bad === 1 ? '' : 's'}`);
 process.exit(bad ? 1 : 0);

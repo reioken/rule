@@ -1,6 +1,6 @@
 /* Deductidle — game loop. Vanilla JS module. Rules stay on the server. */
 import { RuleCatalog as D } from './catalog.js';
-import { dayIndex, dayPlan, LAUNCH_UTC, DAILY_DOMAINS, LEVELS_PER_DAY } from './schedule.js';
+import { dayIndex, dayPlan, LAUNCH_UTC, DAILY_DOMAINS, LEVELS_PER_DAY, LEVEL_NAMES } from './schedule.js';
 import {
   normalizePhase, starsFor, starsStillPossible, starGlyphs, shareText, dayShareText, SHARE_URL,
   alreadyOnBoard, proveReady, needAnotherLook, evidenceLede, inputHint, parseMessage,
@@ -177,7 +177,8 @@ function tokenNode(item, { compact = false, selected = false } = {}) {
 
 function sortMeta() {
   const when = S.mode === 'daily' ? (S.day === today ? `Day ${S.day + 1}` : `Archive · Day ${S.day + 1}`) : 'Practice';
-  return `<span>${when} · ${domain().name}</span>`;
+  const slot = S.mode === 'daily' ? LEVEL_NAMES[S.level] : null;
+  return `<span>${[when, slot, domain().name].filter(Boolean).join(' · ')}</span>`;
 }
 /* ---------- the three puzzles of the day ---------- */
 const dayState = (day, level) => store.get(dayKey(day, level), null);
@@ -207,8 +208,8 @@ function renderSlots() {
     b.className = `slot${active ? ' active' : ''}${slot.done ? ' done' : ''}`;
     b.setAttribute('aria-current', active ? 'true' : 'false');
     const status = slot.done ? starGlyphs(slot.stars) : slot.started ? 'in progress' : 'play';
-    b.innerHTML = `<span class="dn">${slot.name}</span><span class="st${slot.done ? '' : ' none'}">${status}</span>`;
-    b.setAttribute('aria-label', `${slot.name}, ${slot.done ? `${slot.stars} of 3 stars` : status}`);
+    b.innerHTML = `<span class="dn">${LEVEL_NAMES[slot.level]}</span><span class="st${slot.done ? '' : ' none'}">${slot.name} · ${status}</span>`;
+    b.setAttribute('aria-label', `${LEVEL_NAMES[slot.level]}, ${slot.name}, ${slot.done ? `${slot.stars} of 3 stars` : status}`);
     b.addEventListener('click', () => { if (!active) loadDay(day, slot.level).catch(() => {}); });
     nav.appendChild(b);
   }
@@ -220,10 +221,10 @@ function renderPhaseHead() {
   renderSlots();
   if (S.phase === 'explore') {
     $('headline').textContent = 'What’s the rule?';
-    $('lede').textContent = `${evidenceLede(S.evidence.length)} Test anything when you have a theory.`;
+    $('lede').textContent = `${evidenceLede(S.evidence.length)} Test something.`;
   } else if (S.phase === 'prove') {
     $('headline').textContent = 'Sort all six.';
-    $('lede').textContent = 'Every one has to be right.';
+    $('lede').textContent = 'All six have to be right.';
   }
   $('phaseHead').hidden = S.phase === 'result';
 }
@@ -268,11 +269,11 @@ function renderCoach() {
   if (S.mode !== 'daily' || S.phase !== 'explore' || step >= 2) { box.hidden = true; return; }
   const n = tests().length;
   if (step === 0 && n === 0) {
-    $('coachText').innerHTML = 'These already went through the gate. One secret rule decides who gets in. <b>Send anything through</b> to see which side it lands on.';
+    $('coachText').innerHTML = 'IN follows the rule. OUT doesn’t. <b>Test something</b> to see which it is.';
     box.hidden = false;
   } else if (n >= 1) {
     store.set(COACH_KEY, 1);
-    $('coachText').innerHTML = 'The obvious rule is usually a trap. <b>Test something you expect to be out.</b> The counter above shows how many rules from our library still match the board. Get it low, then prove it.';
+    $('coachText').innerHTML = 'When you think you know it, tap <b>I know the rule</b>.';
     box.hidden = false;
   } else box.hidden = true;
 }
@@ -443,10 +444,10 @@ function sortShare() {
   if (S.mode === 'daily') {
     const slots = daySlots(S.day);
     if (slots.every((x) => x.done)) {
-      return dayShareText({ day: S.day, slots: slots.map((x) => ({ domainName: x.name, stars: x.stars, result: x.state.result, log: x.state.log, proveFails: x.state.proveFails })) });
+      return dayShareText({ day: S.day, slots: slots.map((x) => ({ levelName: LEVEL_NAMES[x.level], domainName: x.name, stars: x.stars, result: x.state.result, log: x.state.log, proveFails: x.state.proveFails })) });
     }
   }
-  return shareText({ mode: S.mode, day: S.day, domainName: domain().name, stars: starsNow(), result: S.result, log: S.log, proveFails: S.proveFails });
+  return shareText({ mode: S.mode, day: S.day, domainName: domain().name, levelName: S.mode === 'daily' ? LEVEL_NAMES[S.level] : '', stars: starsNow(), result: S.result, log: S.log, proveFails: S.proveFails });
 }
 function crowdLine(st) {
   if (!st || !st.players) return '';
@@ -465,7 +466,7 @@ function renderResult() {
   $('doneScore').innerHTML = starsHtml(got);
   $('doneScore').setAttribute('aria-label', `${got} of 3 stars`);
   if (solved && got > 0) celebrate(got);
-  $('doneTests').textContent = `${S.strokes} ${S.strokes === 1 ? 'test' : 'tests'} · ${domain().name}`;
+  $('doneTests').textContent = `${S.strokes} ${S.strokes === 1 ? 'test' : 'tests'} · ${S.mode === 'daily' ? `${LEVEL_NAMES[S.level]} · ` : ''}${domain().name}`;
   const crowd = crowdLine(S.stats);
   $('doneCrowd').innerHTML = crowd;
   $('doneCrowd').hidden = !crowd;
@@ -496,8 +497,8 @@ function renderNextUp() {
   const done = slots.filter((x) => x.done).length;
   const label = S.day === today ? 'Today' : `Day ${S.day + 1}`;
   if (next) {
-    box.innerHTML = `<div><p class="eyebrow">${label} · ${done} of ${slots.length} done</p><p class="next-text">Next up: <b>${next.name}</b>${next.started ? ' (in progress)' : ''}</p></div>
-      <button class="btn primary" id="btnNext" type="button" data-icon="arrow-right"><span>${next.started ? 'Continue' : 'Play'} ${next.name}</span></button>`;
+    box.innerHTML = `<div><p class="eyebrow">${label} · ${done} of ${slots.length} done</p><p class="next-text">Next up: <b>${LEVEL_NAMES[next.level]}</b> · ${next.name}${next.started ? ' (in progress)' : ''}</p></div>
+      <button class="btn primary" id="btnNext" type="button" data-icon="arrow-right"><span>${next.started ? 'Continue' : 'Play'} ${LEVEL_NAMES[next.level]}</span></button>`;
     box.className = 'next-up';
     box.hidden = false;
     $('btnNext').addEventListener('click', () => loadDay(S.day, next.level).catch(() => {}));
@@ -506,7 +507,7 @@ function renderNextUp() {
     const total = slots.reduce((n, x) => n + x.stars, 0);
     const solved = slots.filter((x) => x.state.result === 'solved').length;
     box.innerHTML = `<div><p class="eyebrow">${label} complete</p><p class="next-text"><b>${total} of ${3 * slots.length} stars</b> · ${solved === slots.length ? 'all three solved' : `${solved} of ${slots.length} solved`}</p>
-      <div class="day-row">${slots.map((x) => `<span><i>${x.name}</i> ${starGlyphs(x.stars)}</span>`).join('')}</div></div>`;
+      <div class="day-row">${slots.map((x) => `<span><i>${LEVEL_NAMES[x.level]} · ${x.name}</i> ${starGlyphs(x.stars)}</span>`).join('')}</div></div>`;
     box.className = 'next-up complete';
     box.hidden = false;
   }
@@ -590,7 +591,7 @@ async function checkProve() {
     S.proveItems = []; S.proveAnswers = {}; S.phase = 'explore';
     save();
     say($('proveFeedback'), needAnotherLook(wrong));
-    setTimeout(() => { renderSort(); say($('feedback'), `${needAnotherLook(wrong)} They join the board. +2 tests.`); }, reduceMotion ? 400 : 900);
+    setTimeout(() => { renderSort(); say($('feedback'), `${needAnotherLook(wrong)} Wrong ones go on the board. +2 tests.`); }, reduceMotion ? 400 : 900);
   }
 }
 const giveUp = { armed: false, busy: false, timer: null };
@@ -653,7 +654,7 @@ function renderStatsDialog() {
   const pct = st.played ? Math.round((100 * st.solved) / st.played) : 0;
   const avgStars = st.played ? (st.stars / st.played).toFixed(1) : '–';
   const fals = st.tests ? Math.round((100 * st.testsOut) / st.tests) : 0;
-  const tiles = [[st.played, 'Played'], [`${pct}%`, 'Solved'], [avgStars, 'Avg stars'], [liveStreak(st), 'Streak'], [st.best, 'Best'], [st.tests ? `${fals}%` : '–', 'Falsifier']];
+  const tiles = [[st.played, 'Played'], [`${pct}%`, 'Solved'], [avgStars, 'Avg stars'], [liveStreak(st), 'Streak'], [st.best, 'Best'], [st.tests ? `${fals}%` : '–', 'OUT tests']];
   $('statTiles').innerHTML = tiles.map(([v, l]) => `<div class="tile-stat"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
   const cal = [];
   for (let d = today - 27; d <= today; d++) {
@@ -670,11 +671,13 @@ function renderStatsDialog() {
   };
   $('statDomains').innerHTML = [
     ...D.list.filter((d) => DAILY_DOMAINS.includes(d.id)).map((d) => bar(d.name, (st.domains || {})[d.id] || { played: 0, solved: 0 })),
+    '<div class="gap"></div>',
+    ...LEVELS_PER_DAY.map((l) => bar(LEVEL_NAMES[l], (st.levels || {})[l] || { played: 0, solved: 0 })),
   ].join('');
   const arch = [];
   for (let d = today; d >= 0; d--) {
     const slots = daySlots(d);
-    const status = slots.map((x) => `<span class="${x.done ? 'l' + x.level : 'none'}" title="${x.name}">${x.done ? starGlyphs(x.stars) : x.started ? '…' : '·'}</span>`).join('');
+    const status = slots.map((x) => `<span class="${x.done ? 'l' + x.level : 'none'}" title="${LEVEL_NAMES[x.level]} · ${x.name}">${x.done ? starGlyphs(x.stars) : x.started ? '…' : '·'}</span>`).join('');
     arch.push(`<button type="button" data-day="${d}" class="${S && S.mode === 'daily' && S.day === d ? 'current' : ''}"><span class="n">${d + 1}</span><span class="d">${DAY_NAMES[dateOf(d).getUTCDay()]} ${fmtDate(d)} · ${slots.map((x) => x.name).join(', ')}</span><span class="s">${status}</span></button>`);
   }
   $('archive').innerHTML = arch.join('');
@@ -683,11 +686,11 @@ function renderStatsDialog() {
 
 /* ---------- below the game ---------- */
 function renderBelow() {
-  $('weekList').innerHTML = daySlots(today).map((x) => `<li class="${x.done ? 'today' : ''}"><span><b>${x.name}.</b> One hidden rule.</span><b>${x.done ? starGlyphs(x.stars) : ''}</b></li>`).join('');
+  $('weekList').innerHTML = daySlots(today).map((x) => `<li class="${x.done ? 'today' : ''}"><span><b>${LEVEL_NAMES[x.level]}.</b> ${x.name}.</span><b>${x.done ? starGlyphs(x.stars) : ''}</b></li>`).join('');
   if (today >= 1) {
     Promise.all(LEVELS_PER_DAY.map((l) => api('/api/reveal', { mode: 'daily', day: today - 1, level: l }))).then((revs) => {
       const slots = dayPlan(today - 1);
-      $('yesterdayList').innerHTML = revs.map((rev, i) => `<li><span><b>${slots[i] ? D[slots[i].domainId].name : ''}</b><br>${rev.rule}</span><b></b></li>`).join('');
+      $('yesterdayList').innerHTML = revs.map((rev, i) => `<li><span><b>${LEVEL_NAMES[slots[i].level]} · ${slots[i] ? D[slots[i].domainId].name : ''}</b><br>${rev.rule}</span><b></b></li>`).join('');
       $('yesterdayCard').hidden = false;
     }).catch(() => {});
   }
@@ -707,7 +710,7 @@ function shareImage() {
   x.fillStyle = '#f4f3ee'; x.font = '800 74px Syne, "Bricolage Grotesque", sans-serif'; x.fillText('Deductidle', 80, 170);
   x.fillStyle = v('--in') || '#46e0a3'; x.fillText('.', 80 + x.measureText('Deductidle').width, 170);
   x.fillStyle = '#9aa19d'; x.font = '500 34px "IBM Plex Sans", sans-serif';
-  x.fillText(`${S.mode === 'daily' ? `Day ${S.day + 1}` : 'Practice'} · ${domain().name}`, 80, 230);
+  x.fillText(`${S.mode === 'daily' ? `Day ${S.day + 1} · ${LEVEL_NAMES[S.level]}` : 'Practice'} · ${domain().name}`, 80, 230);
   const got = starsNow();
   x.font = '700 150px "Bricolage Grotesque", sans-serif';
   for (let i = 0; i < 3; i++) { x.fillStyle = i < got ? '#ffd166' : '#3a3f42'; x.fillText('★', 80 + i * 150, 460); }

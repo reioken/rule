@@ -128,12 +128,6 @@ body::after {
   flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 6px;
   font-size: 12px; line-height: 16px; color: var(--ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.puzzle-meta .lvl {
-  display: inline-block; padding: 2px 8px; border-radius: 999px; font-weight: 700; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
-  background: var(--item); color: var(--ink-muted);
-}
-.puzzle-meta .lvl.l2 { color: var(--amber); background: color-mix(in srgb, var(--amber) 16%, transparent); }
-.puzzle-meta .lvl.l3 { color: var(--out); background: var(--out-tint); }
 .header-actions { display: flex; gap: 8px; }
 .iconbtn {
   width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface);
@@ -156,10 +150,7 @@ body::after {
 }
 
 /* ---------- the three puzzles of the day ---------- */
-.lvl { display: inline-block; padding: 2px 8px; border-radius: 999px; font-weight: 700; font-size: 11px; line-height: 16px; letter-spacing: 0.06em; text-transform: uppercase; background: var(--item); color: var(--ink-muted); font-style: normal; }
-.lvl.l1 { color: var(--in); background: var(--in-tint); }
-.lvl.l2 { color: var(--amber); background: color-mix(in srgb, var(--amber) 16%, transparent); }
-.lvl.l3 { color: var(--out); background: var(--out-tint); }
+.lvl { display: inline-block; padding: 2px 8px; border-radius: 999px; font-weight: 700; font-size: 11px; line-height: 16px; letter-spacing: 0.06em; background: var(--item); color: var(--ink-muted); font-style: normal; }
 .slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
 .slots .slot {
   display: grid; gap: 6px; justify-items: start; min-width: 0; padding: 10px 12px; border-radius: 14px; text-align: left;
@@ -404,9 +395,7 @@ kbd { font: inherit; font-size: 11px; padding: 1px 5px; border-radius: 5px; bord
 .week li span b { font-weight: 600; }
 .week li.today { color: var(--ink); }
 .week li.today b { color: var(--in); }
-.week .lvl { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--item); }
-.week .lvl.l2 { color: var(--amber); background: color-mix(in srgb, var(--amber) 16%, transparent); }
-.week .lvl.l3 { color: var(--out); background: var(--out-tint); }
+.week .lvl { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--item); }
 .crowd { font-size: 13px; }
 .foot { margin-top: 28px; text-align: center; color: var(--ink-faint); font-size: 12px; }
 
@@ -424,7 +413,7 @@ kbd { font: inherit; font-size: 11px; padding: 1px 5px; border-radius: 5px; bord
 .calendar i.failed { background: var(--out); opacity: 0.8; }
 .calendar i.today { outline: 2px solid var(--ink); outline-offset: 1px; }
 .by-domain { display: grid; gap: 6px; margin-top: 14px; }
-.by-domain div { display: grid; grid-template-columns: 70px 1fr auto; gap: 10px; align-items: center; font-size: 13px; color: var(--ink-muted); }
+.by-domain div { display: grid; grid-template-columns: 76px 1fr auto; gap: 10px; align-items: center; font-size: 13px; color: var(--ink-muted); }
 .by-domain .bar { height: 6px; border-radius: 999px; background: var(--item); overflow: hidden; }
 .by-domain .bar i { display: block; height: 100%; background: var(--in); border-radius: 999px; }
 .by-domain b { color: var(--ink); font-variant-numeric: tabular-nums; }

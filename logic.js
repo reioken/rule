@@ -60,14 +60,14 @@ export function proveReady(items = [], answers = {}) {
 const COUNT_WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six'];
 
 export function needAnotherLook(wrongCount) {
-  if (wrongCount === 1) return 'One needs another look.';
+  if (wrongCount === 1) return 'One is wrong.';
   const word = COUNT_WORDS[wrongCount] || String(wrongCount);
-  return `${word} need another look.`;
+  return `${word} are wrong.`;
 }
 
 export function evidenceLede(count) {
   const half = COUNT_WORDS[count / 2] || String(count / 2);
-  return `${half} are in. ${half} are out. One rule decides.`;
+  return `${half} are in. ${half} are out.`;
 }
 
 export function inputHint(domain) {

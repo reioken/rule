@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Deductidle</title>
-  <meta name="description" content="Three deduction puzzles a day. Some things follow a secret rule and some don't. Work out the hidden rule, then prove it.">
+  <meta name="description" content="Three puzzles a day. Find the hidden rule.">
   <meta name="theme-color" content="#0e1013">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,7 +27,7 @@
       </div>
     </header>
 
-    <nav class="slots" id="slots" aria-label="The three puzzles of the day" hidden></nav>
+    <nav class="slots" id="slots" aria-label="Today's three rules" hidden></nav>
 
     <section id="gameSort">
       <div class="phase-head" id="phaseHead">
@@ -37,8 +37,8 @@
 
       <div class="gate-wrap" id="exploreBoard">
         <div class="gate-head">
-          <div class="gh in"><b>In</b><span>fits the rule</span></div>
-          <div class="gh out"><b>Out</b><span>doesn’t fit</span></div>
+          <div class="gh in"><b>In</b><span>follows the rule</span></div>
+          <div class="gh out"><b>Out</b><span>doesn’t</span></div>
         </div>
         <div class="gate-scroll" id="gateScroll">
           <div class="gate" id="gate"></div>
@@ -56,7 +56,7 @@
           <button type="button" id="alive" class="alive" aria-describedby="aliveNote"></button>
           <p id="starStatus"></p>
         </div>
-        <p class="alive-note" id="aliveNote" hidden>We keep a library of every rule the game can use. This counts the ones that still match every example and every test on the board. The real rule is always one of them, so <b>1</b> means you have it pinned down.</p>
+        <p class="alive-note" id="aliveNote" hidden>How many possible rules still match what you’ve seen. <b>1</b> means that’s the rule.</p>
 
         <div class="coach" id="coach" hidden>
           <p id="coachText"></p>
@@ -123,15 +123,14 @@
         <div class="below-card">
           <p class="eyebrow">How it works</p>
           <ol class="steps">
-            <li><b>Look.</b> A few things are already sorted through the gate by a secret rule.</li>
-            <li><b>Test.</b> Send anything you like through. Every test costs one.</li>
-            <li><b>Prove.</b> Sort six new things. All six right and you’ve cracked it.</li>
+            <li><b>Look.</b> Three follow a hidden rule, three don’t.</li>
+            <li><b>Test.</b> Try your own. Each try counts.</li>
+            <li><b>Prove.</b> Sort six more. All six have to be right.</li>
           </ol>
-          <p class="tip">The obvious rule is usually a trap. Test things you expect to be <b>out</b>.</p>
         </div>
         <div class="below-card">
           <p class="eyebrow">Three a day</p>
-          <p>Every day has three puzzles, each a different kind of thing. Each one hides a single rule. The board is always six examples, three in and three out.</p>
+          <p>Every day has three puzzles: Rule 1, Rule 2 and Rule 3. Each is a different kind of thing. Each hides one rule.</p>
           <ul class="week" id="weekList"></ul>
         </div>
         <div class="below-card" id="yesterdayCard" hidden>
@@ -145,11 +144,10 @@
 
   <dialog id="dlgHelp">
     <h2>Find the rule</h2>
-    <p>A few things are already sorted through the gate by a secret rule. Send your own through to work it out. Every test costs one.</p>
-    <p>When you know it, sort six new things to prove it. Every one has to be right.</p>
-    <p>Every day has three puzzles, each a different kind of thing: numbers, words, shapes, emoji or cards. Each puzzle hides one rule. The board is always six examples, three in and three out.</p>
-    <p><b>Rules still fit</b> counts the rules in our library that match everything on the board. The real one is always among them. Get it to 1.</p>
-    <p>The obvious answer is usually a trap. Test things you expect to fail.</p>
+    <p>Three things follow a hidden rule. Three don’t. Test your own to work it out. Each try counts.</p>
+    <p>When you think you know it, sort six more. All six have to be right.</p>
+    <p>Every day has three puzzles: Rule 1, Rule 2 and Rule 3. Each is a different kind of thing: numbers, words, shapes, emoji or cards.</p>
+    <p><b>Rules still fit</b> is how many possible rules still match what you’ve seen. 1 means that’s the rule.</p>
     <form method="dialog"><button class="btn primary" id="btnHelpClose" type="submit">Close</button></form>
   </dialog>
 

@@ -2,7 +2,7 @@
 
 Three daily deduction puzzles, the same for everyone, at [rule.dennis-bierreth.workers.dev](https://rule.dennis-bierreth.workers.dev).
 
-A few things are already sorted through the gate by a secret rule. Send your own through, then prove you know the rule by sorting six more. Every day has three puzzles, each with a different kind of thing: numbers, words, shapes, emoji or cards. Each puzzle hides one rule.
+A few things are already sorted: three follow a hidden rule, three don’t. Test your own, then prove you know the rule by sorting six more. Every day has three puzzles — Rule 1, Rule 2 and Rule 3 — each a different kind of thing: numbers, words, shapes, emoji or cards. Each puzzle hides one rule.
 
 - Every test costs one. Finish within par for three stars.
 - Every rule has a **trap**: a plausible wrong rule that fits the opening examples. The prove items are chosen so the trap can't pass.
@@ -52,7 +52,7 @@ Paste the id it prints into the commented `[[kv_namespaces]]` block in `wrangler
 | `api.js` | HTTP handlers that test, prove and reveal without shipping the rule |
 | `worker.js` | Cloudflare Worker: `/api/*` then static assets |
 | `icons.js` | The Nucleo UI icons in use, plus a star and a flame drawn here |
-| `game.js` | Game loop, the gate, pickers, stars, share text, stats |
+| `game.js` | Game loop, the board, pickers, stars, share text, stats |
 
 ## Adding a rule or a domain
 

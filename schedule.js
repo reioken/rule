@@ -6,7 +6,7 @@ export const LAUNCH_UTC = Date.UTC(2026, 8, 17); // day 1
 export const DAILY_DOMAINS = ['numbers', 'words', 'shapes', 'emoji', 'cards'];
 /* Three puzzles a day. The numbers are only which slot (for saves and stats). Every slot is one hidden rule. */
 export const LEVELS_PER_DAY = [1, 2, 3];
-export const LEVEL_NAMES = { 1: 'Easy', 2: 'Medium', 3: 'Hard' };
+export const LEVEL_NAMES = { 1: 'Rule 1', 2: 'Rule 2', 3: 'Rule 3' };
 
 export function dayIndex(date = new Date()) {
   const local = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
