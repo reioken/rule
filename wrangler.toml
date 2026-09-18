@@ -7,3 +7,9 @@ directory = "."
 binding = "ASSETS"
 not_found_handling = "404-page"
 run_worker_first = true
+
+# Solve rates. Create the namespace once with:  npx wrangler kv namespace create STATS
+# then paste the id below and uncomment. Without it the game runs fine, it just shows no "solved by" line.
+# [[kv_namespaces]]
+# binding = "STATS"
+# id = "paste-the-id-here"

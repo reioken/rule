@@ -1,6 +1,7 @@
 /* Deductidle — HTTP API. Evaluates the secret rule so it never ships to the browser. */
 import { RuleDomains } from './domains.js';
 import * as E from './engine.js';
+import { dayIndex } from './schedule.js';
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status,
@@ -22,6 +23,7 @@ function resolveRound(input) {
   const mode = input.mode === 'practice' ? 'practice' : 'daily';
   const day = Math.max(0, Number.parseInt(input.day, 10) || 0);
   if (mode === 'daily') {
+    if (day > dayIndex() + 1) fail(400, 'That day is not out yet'); // one day of clock slack for players ahead of UTC
     const pick = E.dailyPick(day);
     const domain = RuleDomains[pick.domainId];
     return { mode, day, ...pick, domain, rule: domain.rules[pick.ruleIdx] };
@@ -43,6 +45,7 @@ function publicMeta(round) {
   const { domain, rule } = round;
   const evidence = evidenceOf(round);
   return {
+    alive: E.aliveHypotheses(domain, rule, evidence),
     mode: round.mode,
     day: round.day,
     domainId: domain.id,
@@ -81,6 +84,31 @@ function revealPayload(round) {
   return { rule: round.rule.rule, detail: round.rule.detail, trapName: round.rule.trapName, breakers: { falseIn, falseOut } };
 }
 
+/* ================= solve rates ================= */
+/* One JSON blob per day in KV: { played, solved, stars: [n0, n1, n2, n3], tests: sum }. Missing binding means no stats. */
+async function readStats(env, day) {
+  if (!env || !env.STATS) return null;
+  try { const raw = await env.STATS.get(`day:${day}`); return raw ? JSON.parse(raw) : { played: 0, solved: 0, stars: [0, 0, 0, 0], tests: 0 }; }
+  catch { return null; }
+}
+async function recordResult(env, day, input) {
+  const st = await readStats(env, day);
+  if (!st) return null;
+  const solved = input.result === 'solved';
+  const stars = Math.max(0, Math.min(3, Number.parseInt(input.stars, 10) || 0));
+  const tests = Math.max(0, Math.min(60, Number.parseInt(input.tests, 10) || 0));
+  st.played += 1;
+  if (solved) st.solved += 1;
+  st.stars[solved ? stars : 0] += 1;
+  st.tests += tests;
+  try { await env.STATS.put(`day:${day}`, JSON.stringify(st)); } catch { /* best effort */ }
+  return st;
+}
+function statsPayload(st) {
+  if (!st || !st.played) return null;
+  return { players: st.played, solvedPct: Math.round((100 * st.solved) / st.played), threeStarPct: Math.round((100 * st.stars[3]) / st.played), avgTests: Math.round((10 * st.tests) / st.played) / 10 };
+}
+
 /* ================= routing ================= */
 async function readInput(request, url) {
   if (request.method === 'GET' || request.method === 'HEAD') {
@@ -92,7 +120,7 @@ async function readInput(request, url) {
   try { return bodyOf(JSON.parse(text)); } catch { fail(400, 'Invalid JSON'); }
 }
 
-export async function handleApi(request) {
+export async function handleApi(request, env) {
   const url = new URL(request.url);
   if (!url.pathname.startsWith('/api/')) return null;
   try {
@@ -132,7 +160,10 @@ export async function handleApi(request) {
       const item = coerce(round.domain, input.item);
       const { used } = usedSet(round, input.tested);
       if (used.has(item)) fail(409, 'Already tested');
-      return json({ item, in: round.rule.test(item) });
+      const isIn = round.rule.test(item);
+      const { evidence } = usedSet(round, input.tested);
+      const known = [...evidence, ...(input.log || []).map((e) => ({ item: e.item, in: e.in === true })), { item, in: isIn }];
+      return json({ item, in: isIn, alive: E.aliveHypotheses(round.domain, round.rule, known) });
     }
 
     if (route === '/api/prove') {
@@ -152,7 +183,22 @@ export async function handleApi(request) {
     }
 
     if (route === '/api/reveal') {
-      return json(revealPayload(resolveRound(input)));
+      const round = resolveRound(input);
+      const st = round.mode === 'daily' ? statsPayload(await readStats(env, round.day)) : null;
+      return json({ ...revealPayload(round), stats: st });
+    }
+
+    /* The client reports how a daily round ended, once. Practice rounds are not counted. */
+    if (route === '/api/result') {
+      const round = resolveRound(input);
+      if (round.mode !== 'daily') return json({ stats: null });
+      const st = await recordResult(env, round.day, input);
+      return json({ stats: statsPayload(st) });
+    }
+
+    if (route === '/api/stats') {
+      const day = Math.max(0, Number.parseInt(input.day, 10) || 0);
+      return json({ stats: statsPayload(await readStats(env, day)) });
     }
 
     return json({ error: 'Not found' }, 404);

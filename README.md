@@ -8,8 +8,12 @@ A few things are already sorted through the gate by a secret rule. Send your own
 - Every rule has a **trap**: a plausible wrong rule that fits the opening examples. The prove items are chosen so the trap can't pass.
 - **Difficulty by weekday.** Monday and Wednesday: one rule, six examples. Tuesday, Thursday, Friday: two rules joined by and, or, or except. Weekends: two rules and only four examples.
 - **Ugly examples.** Of many candidate opening sets, the engine keeps the one that leaves the most wrong hypotheses alive, so the obvious pattern is rarely the rule.
-- Three-line share result: stars, the shape of your attempt as emoji, the link.
-- Rules and functions are evaluated on the server, so they are not in the page's JavaScript.
+- **Hypothesis counter.** After every test the dock shows how many rules from the library still fit the board.
+- **Solve rates.** With a KV namespace bound as `STATS`, results are counted per day and the reveal shows how many players solved it. Without it the game runs unchanged.
+- **Archive.** Any earlier day can be played from the stats dialog or with `?day=N`. Archive plays count toward totals but not the streak.
+- Three-line share result and a rendered share image: stars, the shape of your attempt, the link.
+- Sound is a small synth, off by default. Desktop keys: I and O sort in prove, arrows move, Enter checks; on cards days the rank and suit keys pick.
+- Rules are evaluated on the server, so they are not in the page's JavaScript.
 
 ## Run it
 
@@ -24,6 +28,14 @@ Then open http://127.0.0.1:8787. `npx wrangler dev` is the same shape as product
 `npm run check` (or `node scripts/check.js`) audits every rule of every domain, the first year of daily boards, and the API contract, and exits non-zero if any board breaks a guarantee. GitHub Actions runs that same command on every push.
 
 Deploy on Cloudflare Workers (static assets + the Worker): connect the repo under Workers & Pages, leave the build command empty, and use `npx wrangler deploy` as the deploy command. Or run that command locally from the repo folder.
+
+To turn on solve rates, create a KV namespace once and bind it:
+
+```
+npx wrangler kv namespace create STATS
+```
+
+Paste the id it prints into the commented `[[kv_namespaces]]` block in `wrangler.toml` and uncomment it. For a custom domain, add it under the Worker's Settings → Domains & Routes in the Cloudflare dashboard.
 
 ## Files
 

@@ -18,6 +18,10 @@ const MIME = {
   '.png': 'image/png',
 };
 
+/* A KV stand-in so solve rates work locally. */
+const mem = new Map();
+const env = { STATS: { get: async (k) => mem.get(k) ?? null, put: async (k, v) => { mem.set(k, v); } } };
+
 const server = createServer(async (req, res) => {
   try {
     const request = new Request(new URL(req.url, `http://127.0.0.1:${port}`).href, {
@@ -26,7 +30,7 @@ const server = createServer(async (req, res) => {
       body: req.method === 'GET' || req.method === 'HEAD' ? undefined : await readBody(req),
       duplex: 'half',
     });
-    const api = await handleApi(request);
+    const api = await handleApi(request, env);
     if (api) {
       res.writeHead(api.status, Object.fromEntries(api.headers));
       res.end(Buffer.from(await api.arrayBuffer()));

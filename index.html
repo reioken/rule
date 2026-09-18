@@ -20,11 +20,12 @@
       <p class="wordmark">Deductidle<span class="dot">.</span></p>
       <p class="puzzle-meta" id="meta"></p>
       <div class="header-actions">
+        <button class="iconbtn" id="btnSound" type="button" aria-label="Turn sound on" aria-pressed="false" data-icon="sound-off"></button>
         <button class="iconbtn" id="btnTheme" type="button" aria-label="Switch theme" data-icon="moon"></button>
+        <button class="iconbtn" id="btnStats" type="button" aria-label="Stats and archive" data-icon="chart-bar"></button>
         <button class="iconbtn" id="btnHelp" type="button" aria-label="Help" data-icon="circle-question"></button>
       </div>
     </header>
-
 
     <section id="gameSort">
       <div class="phase-head" id="phaseHead">
@@ -37,8 +38,10 @@
           <div class="gh in"><b>In</b><span>fits the rule</span></div>
           <div class="gh out"><b>Out</b><span>doesn’t fit</span></div>
         </div>
-        <div class="gate" id="gate"></div>
-        <div class="node" id="node"><span class="orb"></span></div>
+        <div class="gate-scroll" id="gateScroll">
+          <div class="gate" id="gate"></div>
+          <div class="node" id="node"><span class="orb"></span></div>
+        </div>
       </div>
 
       <div class="prove-board" id="proveBoard" hidden>
@@ -48,7 +51,13 @@
       <div class="play-dock"><div class="dock-card">
         <div class="status-row" id="statusRow">
           <p id="testCount"><span class="pill">Tests 0</span></p>
+          <p id="alive" class="alive" title="Rules from the library that still fit everything on the board"></p>
           <p id="starStatus"></p>
+        </div>
+
+        <div class="coach" id="coach" hidden>
+          <p id="coachText"></p>
+          <button class="btn quiet" id="btnCoachClose" type="button">Got it</button>
         </div>
 
         <section class="test-panel" id="testPanel">
@@ -70,6 +79,7 @@
           <p class="feedback" id="proveFeedback" aria-live="polite"></p>
           <button class="btn primary" id="btnCheck" type="button" disabled>Check all six</button>
           <button class="btn ghost" id="btnBack" type="button">Keep testing</button>
+          <p class="kbd-hint" aria-hidden="true">Keys: <kbd>I</kbd> in · <kbd>O</kbd> out · <kbd>←</kbd><kbd>→</kbd> move · <kbd>Enter</kbd> check</p>
         </section>
       </div></div>
 
@@ -77,6 +87,7 @@
         <p class="result-stars" id="doneScore" aria-label="Stars"></p>
         <h2 id="doneHeadline">You found the rule.</h2>
         <p class="result-tests" id="doneTests"></p>
+        <p class="result-crowd" id="doneCrowd" hidden></p>
         <div class="rule-block">
           <p class="eyebrow">The rule</p>
           <h3 id="doneRule"></h3>
@@ -89,7 +100,10 @@
         </div>
         <pre class="share-card" id="shareText"></pre>
         <p class="feedback" id="resultFeedback" aria-live="polite"></p>
-        <button class="btn primary" id="btnShare" type="button">Share result</button>
+        <div class="row2 equal">
+          <button class="btn primary" id="btnShare" type="button">Share result</button>
+          <button class="btn" id="btnImage" type="button" data-icon="image"><span>Save image</span></button>
+        </div>
         <div class="practice-row">
           <label class="vh" for="practiceKind">Practice type</label>
           <select id="practiceKind"></select>
@@ -105,6 +119,30 @@
       </section>
     </section>
 
+    <section class="below" id="below">
+      <div class="below-grid">
+        <div class="below-card">
+          <p class="eyebrow">How it works</p>
+          <ol class="steps">
+            <li><b>Look.</b> A few things are already sorted through the gate by a secret rule.</li>
+            <li><b>Test.</b> Send anything you like through. Every test costs one.</li>
+            <li><b>Prove.</b> Sort six new things. All six right and you’ve cracked it.</li>
+          </ol>
+          <p class="tip">The obvious rule is usually a trap. Test things you expect to be <b>out</b>.</p>
+        </div>
+        <div class="below-card">
+          <p class="eyebrow">The week</p>
+          <ul class="week" id="weekList"></ul>
+        </div>
+        <div class="below-card" id="yesterdayCard" hidden>
+          <p class="eyebrow">Yesterday’s rule</p>
+          <h3 id="yesterdayRule"></h3>
+          <p id="yesterdayDetail"></p>
+          <p class="crowd" id="yesterdayCrowd"></p>
+        </div>
+      </div>
+      <p class="foot">Deductidle · one rule a day · made by Dennis</p>
+    </section>
   </div>
 
   <dialog id="dlgHelp">
@@ -113,8 +151,18 @@
     <p>When you know it, sort six new things to prove it. Every one has to be right.</p>
     <p>Monday and Wednesday are one rule. The rest of the week joins two rules together, and weekends give you only four examples to start from.</p>
     <p>The obvious answer is usually a trap. Test things you expect to fail.</p>
-    <div id="helpStats" class="help-stats" hidden></div>
     <form method="dialog"><button class="btn primary" id="btnHelpClose" type="submit">Close</button></form>
+  </dialog>
+
+  <dialog id="dlgStats">
+    <h2>Your stats</h2>
+    <div class="tiles" id="statTiles"></div>
+    <p class="eyebrow cal-label">Last four weeks</p>
+    <div class="calendar" id="calendar" aria-label="Solved days"></div>
+    <div class="by-domain" id="statDomains"></div>
+    <p class="eyebrow cal-label">Archive</p>
+    <div class="archive" id="archive"></div>
+    <form method="dialog"><button class="btn primary" type="submit">Close</button></form>
   </dialog>
 
   <script src="icons.js"></script>
