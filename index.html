@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Deductidle</title>
-  <meta name="description" content="Three deduction puzzles a day. Some things follow a secret rule and some don't. Work out the rule, then prove it.">
+  <meta name="description" content="Three deduction puzzles a day. Some things follow a secret rule and some don't. Work out the hidden rule, then prove it.">
   <meta name="theme-color" content="#0e1013">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -112,12 +112,6 @@
         <div class="practice-row">
           <div class="selects">
             <label class="select"><span class="vh" id="practiceKindLabel">Practice type</span><select id="practiceKind" aria-labelledby="practiceKindLabel"></select></label>
-            <label class="select"><span class="vh" id="practiceLevelLabel">Practice difficulty</span><select id="practiceLevel" aria-labelledby="practiceLevelLabel">
-            <option value="">Any difficulty</option>
-            <option value="1">Easy · one rule</option>
-            <option value="2">Medium · two rules joined</option>
-            <option value="3">Hard · two rules, join hidden</option>
-          </select></label>
           </div>
           <button class="btn ghost" id="btnPractice" type="button">Try a practice puzzle</button>
         </div>
@@ -137,7 +131,7 @@
         </div>
         <div class="below-card">
           <p class="eyebrow">Three a day</p>
-          <p>Every day has an Easy, a Medium and a Hard puzzle, each with a different kind of thing. The board is always six examples, three in and three out.</p>
+          <p>Every day has three puzzles, each a different kind of thing. Each one hides a single rule. The board is always six examples, three in and three out.</p>
           <ul class="week" id="weekList"></ul>
         </div>
         <div class="below-card" id="yesterdayCard" hidden>
@@ -153,7 +147,7 @@
     <h2>Find the rule</h2>
     <p>A few things are already sorted through the gate by a secret rule. Send your own through to work it out. Every test costs one.</p>
     <p>When you know it, sort six new things to prove it. Every one has to be right.</p>
-    <p>Every day has three puzzles, each with a different kind of thing: numbers, words, shapes, emoji or cards. The board is always six examples, three in and three out. <b>Easy</b> is one simple rule. <b>Medium</b> joins two simple rules with <b>and</b>, <b>or</b> or <b>unless</b>, and tells you which. <b>Hard</b> joins two rules and keeps the join to itself.</p>
+    <p>Every day has three puzzles, each a different kind of thing: numbers, words, shapes, emoji or cards. Each puzzle hides one rule. The board is always six examples, three in and three out.</p>
     <p><b>Rules still fit</b> counts the rules in our library that match everything on the board. The real one is always among them. Get it to 1.</p>
     <p>The obvious answer is usually a trap. Test things you expect to fail.</p>
     <form method="dialog"><button class="btn primary" id="btnHelpClose" type="submit">Close</button></form>

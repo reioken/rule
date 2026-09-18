@@ -1,6 +1,6 @@
 /* Deductidle — game loop. Vanilla JS module. Rules stay on the server. */
 import { RuleCatalog as D } from './catalog.js';
-import { dayIndex, dayPlan, LAUNCH_UTC, DAILY_DOMAINS, LEVELS_PER_DAY, LEVEL_NAMES } from './schedule.js';
+import { dayIndex, dayPlan, LAUNCH_UTC, DAILY_DOMAINS, LEVELS_PER_DAY } from './schedule.js';
 import {
   normalizePhase, starsFor, starsStillPossible, starGlyphs, shareText, dayShareText, SHARE_URL,
   alreadyOnBoard, proveReady, needAnotherLook, evidenceLede, inputHint, parseMessage,
@@ -144,7 +144,7 @@ function roundBody() {
 function newRound(meta) {
   S = {
     mode: meta.mode, day: meta.day, domainId: meta.domainId, ruleIdx: meta.ruleIdx, seed: meta.seed,
-    level: meta.level, par: meta.par, evidence: meta.evidence, alive: meta.alive, joined: meta.joined || null,
+    level: meta.level, par: meta.par, evidence: meta.evidence, alive: meta.alive,
     phase: 'explore', strokes: 0, log: [], proveRound: 0, proveFails: 0, proveItems: [], proveAnswers: {},
     result: null, recorded: false, reveal: null, stats: null, reported: false,
   };
@@ -154,7 +154,7 @@ const save = () => { if (S.mode === 'daily') store.set(dayKey(S.day, S.level), S
 function hydrate(saved, meta) {
   S = saved;
   S.phase = normalizePhase(S.phase);
-  S.par = meta.par; S.evidence = meta.evidence; S.level = meta.level; S.joined = meta.joined || null;
+  S.par = meta.par; S.evidence = meta.evidence; S.level = meta.level;
   if (S.alive === undefined) S.alive = meta.alive;
   S.proveItems = Array.isArray(S.proveItems) ? S.proveItems : [];
   S.proveAnswers = S.proveAnswers && typeof S.proveAnswers === 'object' ? S.proveAnswers : {};
@@ -176,9 +176,8 @@ function tokenNode(item, { compact = false, selected = false } = {}) {
 }
 
 function sortMeta() {
-  const lvl = S.level ? ` <span class="lvl l${S.level}">${LEVEL_NAMES[S.level]}</span>` : '';
   const when = S.mode === 'daily' ? (S.day === today ? `Day ${S.day + 1}` : `Archive · Day ${S.day + 1}`) : 'Practice';
-  return `<span>${when} · ${domain().name}</span>${lvl}`;
+  return `<span>${when} · ${domain().name}</span>`;
 }
 /* ---------- the three puzzles of the day ---------- */
 const dayState = (day, level) => store.get(dayKey(day, level), null);
@@ -208,8 +207,8 @@ function renderSlots() {
     b.className = `slot${active ? ' active' : ''}${slot.done ? ' done' : ''}`;
     b.setAttribute('aria-current', active ? 'true' : 'false');
     const status = slot.done ? starGlyphs(slot.stars) : slot.started ? 'in progress' : 'play';
-    b.innerHTML = `<span class="lvl l${slot.level}">${LEVEL_NAMES[slot.level]}</span><span class="dn">${slot.name}</span><span class="st${slot.done ? '' : ' none'}">${status}</span>`;
-    b.setAttribute('aria-label', `${LEVEL_NAMES[slot.level]}, ${slot.name}, ${slot.done ? `${slot.stars} of 3 stars` : status}`);
+    b.innerHTML = `<span class="dn">${slot.name}</span><span class="st${slot.done ? '' : ' none'}">${status}</span>`;
+    b.setAttribute('aria-label', `${slot.name}, ${slot.done ? `${slot.stars} of 3 stars` : status}`);
     b.addEventListener('click', () => { if (!active) loadDay(day, slot.level).catch(() => {}); });
     nav.appendChild(b);
   }
@@ -221,11 +220,7 @@ function renderPhaseHead() {
   renderSlots();
   if (S.phase === 'explore') {
     $('headline').textContent = 'What’s the rule?';
-    if (S.joined === 'hidden') {
-      $('lede').innerHTML = `${evidenceLede(S.evidence.length)} This one is <b>two simple rules</b>, and the join is hidden: <span class="nb"><span class="joiner">and</span>,</span> <span class="joiner">or</span> or <span class="nb"><span class="joiner">unless</span>.</span>`;
-    } else if (S.joined) {
-      $('lede').innerHTML = `${evidenceLede(S.evidence.length)} This one is <b>two simple rules</b> joined by <span class="nb"><span class="joiner">${S.joined}</span>.</span>`;
-    } else $('lede').textContent = `${evidenceLede(S.evidence.length)} Test anything when you have a theory.`;
+    $('lede').textContent = `${evidenceLede(S.evidence.length)} Test anything when you have a theory.`;
   } else if (S.phase === 'prove') {
     $('headline').textContent = 'Sort all six.';
     $('lede').textContent = 'Every one has to be right.';
@@ -448,10 +443,10 @@ function sortShare() {
   if (S.mode === 'daily') {
     const slots = daySlots(S.day);
     if (slots.every((x) => x.done)) {
-      return dayShareText({ day: S.day, slots: slots.map((x) => ({ levelName: LEVEL_NAMES[x.level], domainName: x.name, stars: x.stars, result: x.state.result, log: x.state.log, proveFails: x.state.proveFails })) });
+      return dayShareText({ day: S.day, slots: slots.map((x) => ({ domainName: x.name, stars: x.stars, result: x.state.result, log: x.state.log, proveFails: x.state.proveFails })) });
     }
   }
-  return shareText({ mode: S.mode, day: S.day, domainName: domain().name, levelName: LEVEL_NAMES[S.level], stars: starsNow(), result: S.result, log: S.log, proveFails: S.proveFails });
+  return shareText({ mode: S.mode, day: S.day, domainName: domain().name, stars: starsNow(), result: S.result, log: S.log, proveFails: S.proveFails });
 }
 function crowdLine(st) {
   if (!st || !st.players) return '';
@@ -470,7 +465,7 @@ function renderResult() {
   $('doneScore').innerHTML = starsHtml(got);
   $('doneScore').setAttribute('aria-label', `${got} of 3 stars`);
   if (solved && got > 0) celebrate(got);
-  $('doneTests').textContent = `${S.strokes} ${S.strokes === 1 ? 'test' : 'tests'} · ${LEVEL_NAMES[S.level]} · ${domain().name}`;
+  $('doneTests').textContent = `${S.strokes} ${S.strokes === 1 ? 'test' : 'tests'} · ${domain().name}`;
   const crowd = crowdLine(S.stats);
   $('doneCrowd').innerHTML = crowd;
   $('doneCrowd').hidden = !crowd;
@@ -478,12 +473,7 @@ function renderResult() {
   $('doneRule').textContent = rev.rule || '';
   $('doneDetail').textContent = rev.detail || '';
   const parts = $('doneParts');
-  if (rev.parts && rev.parts.length === 2) {
-    parts.hidden = false;
-    parts.innerHTML = `<div class="part"><span class="eyebrow">Part one</span><h4>${rev.parts[0].rule}</h4><p>${rev.parts[0].detail}</p></div>
-      <div class="joiner-chip">${rev.joined}</div>
-      <div class="part"><span class="eyebrow">Part two</span><h4>${rev.parts[1].rule}</h4><p>${rev.parts[1].detail}</p></div>`;
-  } else { parts.hidden = true; parts.innerHTML = ''; }
+  if (parts) { parts.hidden = true; parts.innerHTML = ''; }
   const br = rev.breakers || {};
   const chips = [];
   if (br.falseIn != null) chips.push(`<span class="breaker out">${tokenNode(br.falseIn).outerHTML}<small>out</small></span>`);
@@ -506,8 +496,8 @@ function renderNextUp() {
   const done = slots.filter((x) => x.done).length;
   const label = S.day === today ? 'Today' : `Day ${S.day + 1}`;
   if (next) {
-    box.innerHTML = `<div><p class="eyebrow">${label} · ${done} of ${slots.length} done</p><p class="next-text">Next up: <b>${LEVEL_NAMES[next.level]}</b> · ${next.name}${next.started ? ' (in progress)' : ''}</p></div>
-      <button class="btn primary" id="btnNext" type="button" data-icon="arrow-right"><span>${next.started ? 'Continue' : 'Play'} ${LEVEL_NAMES[next.level]}</span></button>`;
+    box.innerHTML = `<div><p class="eyebrow">${label} · ${done} of ${slots.length} done</p><p class="next-text">Next up: <b>${next.name}</b>${next.started ? ' (in progress)' : ''}</p></div>
+      <button class="btn primary" id="btnNext" type="button" data-icon="arrow-right"><span>${next.started ? 'Continue' : 'Play'} ${next.name}</span></button>`;
     box.className = 'next-up';
     box.hidden = false;
     $('btnNext').addEventListener('click', () => loadDay(S.day, next.level).catch(() => {}));
@@ -516,7 +506,7 @@ function renderNextUp() {
     const total = slots.reduce((n, x) => n + x.stars, 0);
     const solved = slots.filter((x) => x.state.result === 'solved').length;
     box.innerHTML = `<div><p class="eyebrow">${label} complete</p><p class="next-text"><b>${total} of ${3 * slots.length} stars</b> · ${solved === slots.length ? 'all three solved' : `${solved} of ${slots.length} solved`}</p>
-      <div class="day-row">${slots.map((x) => `<span><i class="lvl l${x.level}">${LEVEL_NAMES[x.level]}</i>${starGlyphs(x.stars)}</span>`).join('')}</div></div>`;
+      <div class="day-row">${slots.map((x) => `<span><i>${x.name}</i> ${starGlyphs(x.stars)}</span>`).join('')}</div></div>`;
     box.className = 'next-up complete';
     box.hidden = false;
   }
@@ -679,14 +669,12 @@ function renderStatsDialog() {
     return `<div><span>${name}</span><span class="bar"><i style="width:${w}%"></i></span><b>${x.solved} / ${x.played}</b></div>`;
   };
   $('statDomains').innerHTML = [
-    ...LEVELS_PER_DAY.map((l) => bar(LEVEL_NAMES[l], (st.levels || {})[l] || { played: 0, solved: 0 })),
-    '<div class="gap"></div>',
     ...D.list.filter((d) => DAILY_DOMAINS.includes(d.id)).map((d) => bar(d.name, (st.domains || {})[d.id] || { played: 0, solved: 0 })),
   ].join('');
   const arch = [];
   for (let d = today; d >= 0; d--) {
     const slots = daySlots(d);
-    const status = slots.map((x) => `<span class="${x.done ? 'l' + x.level : 'none'}" title="${LEVEL_NAMES[x.level]} · ${x.name}">${x.done ? starGlyphs(x.stars) : x.started ? '…' : '·'}</span>`).join('');
+    const status = slots.map((x) => `<span class="${x.done ? 'l' + x.level : 'none'}" title="${x.name}">${x.done ? starGlyphs(x.stars) : x.started ? '…' : '·'}</span>`).join('');
     arch.push(`<button type="button" data-day="${d}" class="${S && S.mode === 'daily' && S.day === d ? 'current' : ''}"><span class="n">${d + 1}</span><span class="d">${DAY_NAMES[dateOf(d).getUTCDay()]} ${fmtDate(d)} · ${slots.map((x) => x.name).join(', ')}</span><span class="s">${status}</span></button>`);
   }
   $('archive').innerHTML = arch.join('');
@@ -694,13 +682,12 @@ function renderStatsDialog() {
 }
 
 /* ---------- below the game ---------- */
-const LEVEL_BLURB = { 1: 'One simple rule.', 2: 'Two simple rules joined by and, or, or unless. You are told which.', 3: 'Two simple rules joined. The join is yours to work out.' };
 function renderBelow() {
-  $('weekList').innerHTML = daySlots(today).map((x) => `<li class="${x.done ? 'today' : ''}"><span class="lvl l${x.level}">${LEVEL_NAMES[x.level]}</span><span><b>${x.name}.</b> ${LEVEL_BLURB[x.level]}</span><b>${x.done ? starGlyphs(x.stars) : ''}</b></li>`).join('');
+  $('weekList').innerHTML = daySlots(today).map((x) => `<li class="${x.done ? 'today' : ''}"><span><b>${x.name}.</b> One hidden rule.</span><b>${x.done ? starGlyphs(x.stars) : ''}</b></li>`).join('');
   if (today >= 1) {
     Promise.all(LEVELS_PER_DAY.map((l) => api('/api/reveal', { mode: 'daily', day: today - 1, level: l }))).then((revs) => {
       const slots = dayPlan(today - 1);
-      $('yesterdayList').innerHTML = revs.map((rev, i) => `<li><span class="lvl l${slots[i].level}">${LEVEL_NAMES[slots[i].level]}</span><span><b>${rev.rule}</b><br>${rev.detail}</span><b></b></li>`).join('');
+      $('yesterdayList').innerHTML = revs.map((rev, i) => `<li><span><b>${slots[i] ? D[slots[i].domainId].name : ''}</b><br>${rev.rule}</span><b></b></li>`).join('');
       $('yesterdayCard').hidden = false;
     }).catch(() => {});
   }
@@ -720,7 +707,7 @@ function shareImage() {
   x.fillStyle = '#f4f3ee'; x.font = '800 74px Syne, "Bricolage Grotesque", sans-serif'; x.fillText('Deductidle', 80, 170);
   x.fillStyle = v('--in') || '#46e0a3'; x.fillText('.', 80 + x.measureText('Deductidle').width, 170);
   x.fillStyle = '#9aa19d'; x.font = '500 34px "IBM Plex Sans", sans-serif';
-  x.fillText(`${S.mode === 'daily' ? `Day ${S.day + 1}` : 'Practice'} · ${LEVEL_NAMES[S.level]} · ${domain().name}`, 80, 230);
+  x.fillText(`${S.mode === 'daily' ? `Day ${S.day + 1}` : 'Practice'} · ${domain().name}`, 80, 230);
   const got = starsNow();
   x.font = '700 150px "Bricolage Grotesque", sans-serif';
   for (let i = 0; i < 3; i++) { x.fillStyle = i < got ? '#ffd166' : '#3a3f42'; x.fillText('★', 80 + i * 150, 460); }
@@ -737,7 +724,7 @@ function shareImage() {
   c.toBlob((blob) => {
     if (!blob) { say($('resultFeedback'), 'Could not make the image.'); return; }
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `deductidle-${S.mode === 'daily' ? `${S.day + 1}-${LEVEL_NAMES[S.level].toLowerCase()}` : 'practice'}.png`; document.body.appendChild(a); a.click(); a.remove();
+    const a = document.createElement('a'); a.href = url; a.download = `deductidle-${S.mode === 'daily' ? `${S.day + 1}-${domain().id}` : 'practice'}.png`; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
     say($('resultFeedback'), 'Image saved.');
   }, 'image/png');
@@ -799,8 +786,7 @@ $('btnImage').addEventListener('click', shareImage);
 $('btnPractice').addEventListener('click', async () => {
   try {
     const domainId = $('practiceKind').value || S.domainId;
-    const level = $('practiceLevel').value || undefined;
-    const meta = await api('/api/round', { mode: 'practice', day: S.day, domainId, level });
+    const meta = await api('/api/round', { mode: 'practice', day: S.day, domainId });
     newRound(meta); renderSort(); window.scrollTo(0, 0);
     if (domain().input === 'text') $('probeInput').focus();
   } catch { say($('resultFeedback'), 'Could not start practice.'); }

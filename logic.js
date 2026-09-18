@@ -41,7 +41,7 @@ export function shareText({ mode, day, domainName, levelName, stars, result, log
 export function dayShareText({ day, slots }) {
   const total = slots.reduce((n, s) => n + s.stars, 0);
   const head = `Deductidle #${day + 1} · ${total}/${3 * slots.length} ★`;
-  const lines = slots.map((s) => `${s.levelName} · ${s.domainName} ${starGlyphs(s.stars)} ${attemptRow(s)}`);
+  const lines = slots.map((s) => `${s.levelName ? `${s.levelName} · ` : ''}${s.domainName} ${starGlyphs(s.stars)} ${attemptRow(s)}`);
   return [head, ...lines, SHARE_URL].join('\n');
 }
 

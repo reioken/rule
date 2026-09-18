@@ -54,7 +54,6 @@ function publicMeta(round) {
     level: round.level,
     levelName: E.LEVELS[round.level].name,
     par: rule.par,
-    ...(rule.level === 2 ? { joined: E.LEVELS[round.level].showJoin ? rule.word : 'hidden' } : {}),
     evidence,
     ...(round.mode === 'practice' ? { ruleIdx: round.ruleIdx } : {}),
   };
@@ -86,7 +85,6 @@ function revealPayload(round) {
   const r = round.rule;
   return {
     rule: r.rule, detail: r.detail, trapName: r.trapName, breakers: { falseIn, falseOut },
-    ...(r.level === 2 ? { joined: r.word, parts: r.parts } : {}),
   };
 }
 
@@ -142,21 +140,15 @@ export async function handleApi(request, env) {
         if (!domain) fail(400, 'Unknown domain');
         const hasRule = input.ruleIdx != null && input.ruleIdx !== '';
         const hasSeed = input.seed != null && input.seed !== '';
-        const wantLevel = [1, 2, 3].includes(Number(input.level)) ? Number(input.level) : 1 + Math.floor(Math.random() * 3);
         let ruleIdx;
         if (hasRule) ruleIdx = Number.parseInt(input.ruleIdx, 10);
-        else {
-          const wantCompound = E.LEVELS[wantLevel].compound;
-          const subset = domain.rules.map((r, i) => ({ r, i })).filter(({ r }) => ((r.level || 1) === 2) === wantCompound);
-          const from = subset.length ? subset : domain.rules.map((r, i) => ({ r, i }));
-          ruleIdx = from[Math.floor(Math.random() * from.length)].i;
-        }
+        else ruleIdx = Math.floor(Math.random() * domain.rules.length);
         const rule = domain.rules[ruleIdx];
         if (!rule) fail(400, 'Unknown rule');
         const seed = hasSeed ? Number.parseInt(input.seed, 10) : Math.floor(Math.random() * 1e9);
         if (!Number.isFinite(seed)) fail(400, 'Missing seed');
         const day = Math.max(0, Number.parseInt(input.day, 10) || 0);
-        const level = E.levelOf(rule) === 1 ? 1 : (wantLevel === 3 ? 3 : 2);
+        const level = [1, 2, 3].includes(Number(input.level)) ? Number(input.level) : 1;
         return json(publicMeta({ mode: 'practice', day, domainId: domain.id, ruleIdx, seed, level, domain, rule }));
       }
       return json(publicMeta(resolveRound(input)));

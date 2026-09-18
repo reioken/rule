@@ -1,13 +1,12 @@
 /* Deductidle — which puzzles are today's. Safe to ship to the client: no rules here, only the draw.
-   Every day has three puzzles, Easy, Medium and Hard, each with a different kind of thing. The draw
+   Every day has three puzzles, each a different kind of thing and each with one hidden rule. The draw
    comes from a seed made of the day number, so everyone gets the same three and nothing repeats on
    a weekly pattern. A slot never shows the same kind two days in a row. */
 export const LAUNCH_UTC = Date.UTC(2026, 8, 17); // day 1
 export const DAILY_DOMAINS = ['numbers', 'words', 'shapes', 'emoji', 'cards'];
-/* 1: one simple rule. 2: two rules joined, join shown. 3: two rules joined, join hidden. */
+/* Three puzzles a day. The numbers are only which slot (for saves and stats). Every slot is one hidden rule. */
 export const LEVELS_PER_DAY = [1, 2, 3];
 export const LEVEL_NAMES = { 1: 'Easy', 2: 'Medium', 3: 'Hard' };
-const EASY_ONLY = new Set(['emoji']); // too few emoji to build many compound rules from
 
 export function dayIndex(date = new Date()) {
   const local = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
@@ -36,7 +35,7 @@ export function dayPlan(day) {
     const prev = plans[d - 1];
     const used = new Set();
     const slots = LEVELS_PER_DAY.map((level) => {
-      const choices = DAILY_DOMAINS.filter((id) => !used.has(id) && id !== prev[level - 1].domainId && (level === 1 || !EASY_ONLY.has(id)));
+      const choices = DAILY_DOMAINS.filter((id) => !used.has(id) && id !== prev[level - 1].domainId);
       const domainId = choices[Math.floor(rng() * choices.length)];
       used.add(domainId);
       return { level, domainId };
