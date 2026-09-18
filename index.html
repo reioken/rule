@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Deductidle</title>
-  <meta name="description" content="Two daily deduction puzzles. In or out: find the rule that sorts things. Black box: find what the machine does.">
+  <meta name="description" content="A daily deduction puzzle. Some things follow a secret rule and some don't. Work out the rule, then prove it.">
   <meta name="theme-color" content="#f1eee6" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#121615" media="(prefers-color-scheme: dark)">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 64 64%27%3E%3Crect width=%2764%27 height=%2764%27 rx=%2712%27 fill=%27%23222522%27/%3E%3Crect x=%2712%27 y=%2714%27 width=%2716%27 height=%2736%27 rx=%274%27 fill=%27%2338736c%27/%3E%3Crect x=%2736%27 y=%2714%27 width=%2716%27 height=%2736%27 rx=%274%27 fill=%27%238b5b50%27/%3E%3C/svg%3E">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -24,17 +24,8 @@
       </div>
     </header>
 
-    <nav class="tabs" role="tablist" aria-label="Puzzles">
-      <button class="tab" id="tabSort" role="tab" type="button" aria-selected="true" aria-controls="gameSort">
-        <span class="tab-name">In or out</span><span class="tab-sub" id="tabSortSub"></span>
-      </button>
-      <button class="tab" id="tabBox" role="tab" type="button" aria-selected="false" aria-controls="gameBox">
-        <span class="tab-name">Black box</span><span class="tab-sub" id="tabBoxSub"></span>
-      </button>
-    </nav>
 
-    <!-- ================= IN OR OUT ================= -->
-    <section id="gameSort" role="tabpanel" aria-labelledby="tabSort">
+    <section id="gameSort">
       <div class="phase-head" id="phaseHead">
         <h1 id="headline">What’s the rule?</h1>
         <p class="lede" id="lede"></p>
@@ -113,79 +104,13 @@
       </section>
     </section>
 
-    <!-- ================= BLACK BOX ================= -->
-    <section id="gameBox" role="tabpanel" aria-labelledby="tabBox" hidden>
-      <div class="phase-head">
-        <h1 id="boxHeadline">What does the box do?</h1>
-        <p class="lede" id="boxLede">Three things went in and came out changed. Feed it your own to find the rule.</p>
-      </div>
-
-      <div class="machine" id="machine">
-        <div class="machine-rows" id="boxRows"></div>
-      </div>
-
-      <div class="prove-board" id="boxProveBoard" hidden>
-        <div class="box-prove" id="boxProveGrid"></div>
-      </div>
-
-      <div class="play-dock">
-        <div class="status-row" id="boxStatusRow">
-          <p id="boxRunCount">Runs 0</p>
-          <p id="boxStarStatus"></p>
-        </div>
-
-        <section class="test-panel" id="boxTestPanel">
-          <p class="feedback" id="boxFeedback" aria-live="polite"></p>
-          <form id="boxForm">
-            <label class="vh" for="boxInput" id="boxLabel">Feed it a number</label>
-            <input id="boxInput" maxlength="10" autocomplete="off">
-            <button class="btn primary" id="btnRun" type="submit">Run</button>
-          </form>
-          <div class="row2">
-            <button class="btn ghost" id="btnBoxProve" type="button">I know what it does</button>
-            <button class="btn quiet" id="btnBoxGiveUp" type="button">Give up</button>
-          </div>
-        </section>
-
-        <section class="prove-actions" id="boxProveActions" hidden>
-          <p class="feedback" id="boxProveFeedback" aria-live="polite"></p>
-          <button class="btn primary" id="btnBoxCheck" type="button" disabled>Check all four</button>
-          <button class="btn ghost" id="btnBoxBack" type="button">Keep running</button>
-        </section>
-      </div>
-
-      <section class="result-panel" id="boxResultPanel" hidden>
-        <p class="result-stars" id="boxScore" aria-label="Stars"></p>
-        <h2 id="boxDoneHeadline">You cracked the box.</h2>
-        <p class="result-tests" id="boxDoneTests"></p>
-        <div class="rule-block">
-          <p class="eyebrow">The box</p>
-          <h3 id="boxDoneName"></h3>
-          <p id="boxDoneDetail"></p>
-        </div>
-        <div class="rule-block trap" id="boxLookalikeBlock" hidden>
-          <p class="eyebrow">The lookalike</p>
-          <p id="boxLookalike"></p>
-        </div>
-        <pre class="share-card" id="boxShareText"></pre>
-        <p class="feedback" id="boxResultFeedback" aria-live="polite"></p>
-        <button class="btn primary" id="btnBoxShare" type="button">Share result</button>
-        <div class="practice-row">
-          <label class="vh" for="boxPracticeKind">Practice type</label>
-          <select id="boxPracticeKind">
-            <option value="numbers">Numbers</option>
-            <option value="words">Words</option>
-          </select>
-          <button class="btn ghost" id="btnBoxPractice" type="button">Try a practice box</button>
-        </div>
-      </section>
-    </section>
   </div>
 
   <dialog id="dlgHelp">
-    <h2>Two puzzles a day</h2>
-    <p><b>In or out.</b> A few things are already sorted by a secret rule. Test your own, then sort six new ones to prove you know it. Every test costs one. Hard days join two rules together.</p>
-    <p><b>Black box.</b> Three things went in and came out changed. Feed it your own, then predict four outputs to prove you know what it does.</p>
+    <h2>Find the rule</h2>
+    <p>A few things are already sorted through the gate by a secret rule. Send your own through to work it out. Every test costs one.</p>
+    <p>When you know it, sort six new things to prove it. Every one has to be right.</p>
+    <p>Monday and Wednesday are one rule. The rest of the week joins two rules together, and weekends give you only four examples to start from.</p>
     <p>The obvious answer is usually a trap. Test things you expect to fail.</p>
     <div id="helpStats" class="help-stats" hidden></div>
     <form method="dialog"><button class="btn primary" id="btnHelpClose" type="submit">Close</button></form>

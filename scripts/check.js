@@ -6,9 +6,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { RuleDomains as D } from '../domains.js';
 import * as E from '../engine.js';
-import * as B from '../box.js';
 import { handleApi } from '../api.js';
-import { WEEK, BOX_WEEK, LEVEL_FOR } from '../schedule.js';
+import { WEEK, LEVEL_FOR } from '../schedule.js';
 import {
   starsFor, starsStillPossible, shareText, alreadyOnBoard, proveReady,
   needAnotherLook, normalizePhase,
@@ -79,33 +78,6 @@ for (const domain of D.list) {
   }
 }
 
-/* Black Box: every function over many seeds and the first 365 days. */
-function checkBox(who, domain, fn, seed, rounds = 1) {
-  boards++;
-  const rng = B.mulberry32(seed);
-  const { given } = B.buildGiven(domain, fn, rng);
-  if (given.length !== 3) fail(who, `given has ${given.length} pairs, want 3`);
-  const used = new Set(given.map((g) => g.input));
-  if (used.size !== 3) fail(who, 'given repeats an input');
-  for (const g of given) if (!B.sameOut(B.run(domain, fn, g.input), g.output)) fail(who, 'given output disagrees with the function');
-  for (let r = 0; r < rounds; r++) {
-    const prove = B.buildProve(domain, fn, used, B.mulberry32(seed + 7919 * (r + 1)));
-    if (prove.length !== 4) fail(who, `prove has ${prove.length} inputs, want 4`);
-    if (prove.some((p) => used.has(p.input))) fail(who, 'prove reuses an input');
-    const others = domain.funcs.filter((g) => g !== fn);
-    const fooled = others.filter((g) => prove.every((p) => B.sameOut(B.run(domain, g, p.input), p.output)));
-    if (fooled.length) fail(who, `another function passes prove: ${fooled.map((g) => g.id).join(', ')}`);
-    for (const p of prove) used.add(p.input);
-  }
-}
-for (const domain of B.BoxDomains.list) {
-  for (const fn of domain.funcs) for (let s = 0; s < 30; s++) checkBox(`box ${domain.id}/${fn.id} seed ${s * 1000 + 313}`, domain, fn, s * 1000 + 313);
-}
-for (let day = 0; day < 365; day++) {
-  const p = B.dailyBox(day);
-  checkBox(`box #${day + 1} ${p.domainId}`, B.BoxDomains[p.domainId], B.BoxDomains[p.domainId].funcs[p.fnIdx], p.seed, 3);
-}
-if (new Set(Object.values(BOX_WEEK)).size !== 2) fail('box schedule', 'expected two box domains in the week');
 
 /* Client-facing files must not ship rule predicates or reveal copy. */
 const clientFiles = ['catalog.js', 'game.js', 'schedule.js', 'icons.js', 'index.html', 'logic.js'];
@@ -119,10 +91,7 @@ for (const f of clientFiles) {
       if (text.includes(rule.trapName)) fail(`client ${f}`, `contains trap name "${rule.trapName}"`);
     }
   }
-  for (const domain of B.BoxDomains.list) for (const fn of domain.funcs) {
-    if (text.includes(fn.name)) fail(`client ${f}`, `contains box function name "${fn.name}"`);
-  }
-  if (/from ['"]\.\/(?:domains|words|engine|api|box)\.js['"]/.test(text)) fail(`client ${f}`, 'imports server-only modules');
+  if (/from ['"]\.\/(?:domains|words|engine|api)\.js['"]/.test(text)) fail(`client ${f}`, 'imports server-only modules');
 }
 
 async function call(path, body, method) {
@@ -172,20 +141,6 @@ const practiceKind = await (await call('/api/round', { mode: 'practice', day: 0,
 if (practiceKind.domainId !== 'emoji') fail('api practice domain', `wanted emoji, got ${practiceKind.domainId}`);
 if (practiceKind.rule || practiceKind.detail || practiceKind.trapName) fail('api practice domain', 'practice round leaked the rule');
 
-/* Black Box API */
-const box = await (await call('/api/box/round?day=1&mode=daily')).json();
-if (box.game !== 'box' || !box.given || box.given.length !== 3) fail('api box', 'day 1 box round incomplete');
-if (box.name || box.detail || box.fnIdx != null) fail('api box', 'box round leaked the function');
-const bp = B.dailyBox(1); const bfn = B.BoxDomains[bp.domainId].funcs[bp.fnIdx];
-const ran = await (await call('/api/box/run', { mode: 'daily', day: 1, input: bp.domainId === 'numbers' ? 123 : 'zebra', tested: [] })).json();
-if (!B.sameOut(ran.output, B.run(B.BoxDomains[bp.domainId], bfn, ran.input))) fail('api box run', 'run disagrees with the function');
-const bprove = await (await call('/api/box/prove', { mode: 'daily', day: 1, tested: [], proveRound: 0 })).json();
-if (!bprove.items || bprove.items.length !== 4 || bprove.items.some((p) => 'output' in p)) fail('api box prove', 'prove items wrong or leaked');
-const bexpected = B.buildProve(B.BoxDomains[bp.domainId], bfn, new Set(box.given.map((g) => g.input)), B.mulberry32(bp.seed + 7919));
-const bwrong = await (await call('/api/box/check', { mode: 'daily', day: 1, tested: [], proveRound: 0, answers: bprove.items.map((p) => ({ input: p.input, output: 'x' })) })).json();
-if (bwrong.allRight || bwrong.reveal) fail('api box check', 'wrong outputs should not pass');
-const bright = await (await call('/api/box/check', { mode: 'daily', day: 1, tested: [], proveRound: 0, answers: bexpected.map((p) => ({ input: p.input, output: p.output })) })).json();
-if (!bright.allRight || !bright.reveal || bright.reveal.name !== bfn.name) fail('api box check', 'correct outputs were rejected');
 
 if (starsFor({ result: 'gaveup', strokes: 0, par: 4 }) !== 0) fail('stars', 'give up should be 0');
 if (starsFor({ result: 'solved', strokes: 4, par: 4 }) !== 3) fail('stars', 'at par should be 3');
@@ -198,13 +153,11 @@ if (alreadyOnBoard([], [{ item: 'cat', kind: 'test' }], 'cat') !== true) fail('d
 if (proveReady([{ item: 1 }, { item: 2 }], { 1: true }) !== false) fail('prove', 'incomplete answers should not be ready');
 if (proveReady([{ item: 1 }, { item: 2 }], { 1: true, 2: false }) !== true) fail('prove', 'complete answers should be ready');
 if (needAnotherLook(2) !== 'Two need another look.') fail('copy', 'wrong-count copy mismatch');
-const share = shareText({ game: 'sort', mode: 'daily', day: 0, domainName: 'Numbers', levelName: 'Hard', stars: 2, result: 'solved', log: [{ in: true, kind: 'test' }, { in: false, kind: 'test' }], proveFails: 1 });
+const share = shareText({ mode: 'daily', day: 0, domainName: 'Numbers', levelName: 'Hard', stars: 2, result: 'solved', log: [{ in: true, kind: 'test' }, { in: false, kind: 'test' }], proveFails: 1 });
 const shareLines = share.split('\n');
 if (!shareLines[0].startsWith('Deductidle #1') || !shareLines[0].includes('★★☆')) fail('share', `unexpected share head: ${shareLines[0]}`);
 if (shareLines[1] !== '🟩⬛ ❌✅') fail('share', `unexpected share row: ${shareLines[1]}`);
 if (!/^https:\/\//.test(shareLines[2] || '')) fail('share', 'share text has no link');
-const boxShare = shareText({ game: 'box', mode: 'daily', day: 2, domainName: 'Words', stars: 3, result: 'solved', log: [{ kind: 'test' }, { kind: 'test' }, { kind: 'test' }], proveFails: 0 });
-if (!boxShare.includes('Black box') || !boxShare.includes('🟦🟦🟦 ✅')) fail('share', `unexpected box share: ${boxShare}`);
 
 console.log(`${boards} boards checked, ${bad} violation${bad === 1 ? '' : 's'}`);
 process.exit(bad ? 1 : 0);

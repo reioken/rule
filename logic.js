@@ -25,22 +25,20 @@ export function starGlyphs(n) {
 }
 
 /* Three lines: who and how well, the shape of the attempt, the link.
-   Sort: 🟩 for a test that came back In, ⬛ for Out, then ❌ per failed prove and ✅ on solve.
-   Box:  🟦 per run, then the same prove marks. A give-up ends in 🏳️. */
-export function shareText({ game = 'sort', mode, day, domainName, levelName, stars, result, log = [], proveFails = 0 }) {
+   🟩 for a test that came back In, ⬛ for Out, then ❌ per failed prove and ✅ on solve. A give-up ends in 🏳️. */
+export function shareText({ mode, day, domainName, levelName, stars, result, log = [], proveFails = 0 }) {
   const id = mode === 'daily' ? `#${day + 1}` : 'practice';
-  const what = game === 'box' ? 'Black box' : domainName || '';
-  const hard = game === 'sort' && levelName && levelName !== 'Easy' ? ` · ${levelName}` : '';
-  const head = `Deductidle ${id} · ${what}${hard} · ${starGlyphs(stars)}`;
+  const hard = levelName && levelName !== 'Easy' ? ` · ${levelName}` : '';
+  const head = `Deductidle ${id} · ${domainName || ''}${hard} · ${starGlyphs(stars)}`;
   const tests = log.filter((e) => e.kind === 'test');
-  const row = game === 'box' ? '🟦'.repeat(tests.length) : tests.map((e) => (e.in ? '🟩' : '⬛')).join('');
+  const row = tests.map((e) => (e.in ? '🟩' : '⬛')).join('');
   const marks = '❌'.repeat(proveFails) + (result === 'solved' ? '✅' : result === 'gaveup' ? '🏳️' : '');
   return [head, `${row || '·'} ${marks}`.trim(), SHARE_URL].join('\n');
 }
 
 export function alreadyOnBoard(evidence = [], log = [], item) {
   const key = String(item);
-  return evidence.some((e) => String(e.item ?? e.input) === key) || log.some((e) => String(e.item ?? e.input) === key);
+  return evidence.some((e) => String(e.item) === key) || log.some((e) => String(e.item) === key);
 }
 
 export function proveReady(items = [], answers = {}) {
@@ -48,10 +46,6 @@ export function proveReady(items = [], answers = {}) {
     const v = answers[p.item] ?? answers[String(p.item)];
     return v === true || v === false;
   });
-}
-
-export function boxProveReady(items = [], answers = {}) {
-  return items.length > 0 && items.every((p) => String(answers[String(p.input)] ?? '').trim() !== '');
 }
 
 const COUNT_WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six'];

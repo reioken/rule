@@ -1,7 +1,6 @@
 /* Deductidle — HTTP API. Evaluates the secret rule so it never ships to the browser. */
 import { RuleDomains } from './domains.js';
 import * as E from './engine.js';
-import * as B from './box.js';
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status,
@@ -19,7 +18,6 @@ function bodyOf(value) {
   fail(400, 'Expected JSON');
 }
 
-/* ================= In or Out ================= */
 function resolveRound(input) {
   const mode = input.mode === 'practice' ? 'practice' : 'daily';
   const day = Math.max(0, Number.parseInt(input.day, 10) || 0);
@@ -45,7 +43,6 @@ function publicMeta(round) {
   const { domain, rule } = round;
   const evidence = evidenceOf(round);
   return {
-    game: 'sort',
     mode: round.mode,
     day: round.day,
     domainId: domain.id,
@@ -84,48 +81,6 @@ function revealPayload(round) {
   return { rule: round.rule.rule, detail: round.rule.detail, trapName: round.rule.trapName, breakers: { falseIn, falseOut } };
 }
 
-/* ================= Black Box ================= */
-function resolveBox(input) {
-  const mode = input.mode === 'practice' ? 'practice' : 'daily';
-  const day = Math.max(0, Number.parseInt(input.day, 10) || 0);
-  if (mode === 'daily') {
-    const pick = B.dailyBox(day);
-    const domain = B.BoxDomains[pick.domainId];
-    return { mode, day, ...pick, domain, fn: domain.funcs[pick.fnIdx] };
-  }
-  const domain = B.BoxDomains[input.domainId];
-  if (!domain) fail(400, 'Unknown domain');
-  const fnIdx = Number.parseInt(input.fnIdx, 10);
-  const fn = domain.funcs[fnIdx];
-  if (!fn) fail(400, 'Unknown function');
-  const seed = Number.parseInt(input.seed, 10);
-  if (!Number.isFinite(seed)) fail(400, 'Missing seed');
-  return { mode, day, domainId: domain.id, fnIdx, seed, domain, fn };
-}
-const givenOf = (round) => B.buildGiven(round.domain, round.fn, B.mulberry32(round.seed));
-function boxMeta(round) {
-  const { given } = givenOf(round);
-  return {
-    game: 'box', mode: round.mode, day: round.day, domainId: round.domain.id, seed: round.seed,
-    par: round.fn.par, given,
-    ...(round.mode === 'practice' ? { fnIdx: round.fnIdx } : {}),
-  };
-}
-function boxUsed(round, tested = []) {
-  const { given } = givenOf(round);
-  const used = new Set(given.map((g) => g.input));
-  for (const raw of tested) { try { used.add(coerce(round.domain, raw)); } catch { /* stale */ } }
-  return used;
-}
-function boxProve(round, tested, proveRound) {
-  const roundN = Math.max(0, Number.parseInt(proveRound, 10) || 0);
-  return B.buildProve(round.domain, round.fn, boxUsed(round, tested), B.mulberry32(round.seed + 7919 * (roundN + 1)));
-}
-function boxReveal(round) {
-  const { lookalike } = givenOf(round);
-  return { name: round.fn.name, detail: round.fn.detail, lookalike };
-}
-
 /* ================= routing ================= */
 async function readInput(request, url) {
   if (request.method === 'GET' || request.method === 'HEAD') {
@@ -144,7 +99,6 @@ export async function handleApi(request) {
     const input = await readInput(request, url);
     const route = url.pathname.replace(/\/+$/, '') || '/';
 
-    /* ----- In or Out ----- */
     if (route === '/api/round') {
       if (input.mode === 'practice') {
         const domain = input.domainId != null && input.domainId !== ''
@@ -199,50 +153,6 @@ export async function handleApi(request) {
 
     if (route === '/api/reveal') {
       return json(revealPayload(resolveRound(input)));
-    }
-
-    /* ----- Black Box ----- */
-    if (route === '/api/box/round') {
-      if (input.mode === 'practice') {
-        const domain = input.domainId != null && input.domainId !== ''
-          ? B.BoxDomains[input.domainId]
-          : B.BoxDomains.list[Math.floor(Math.random() * B.BoxDomains.list.length)];
-        if (!domain) fail(400, 'Unknown domain');
-        const fnIdx = input.fnIdx != null && input.fnIdx !== '' ? Number.parseInt(input.fnIdx, 10) : Math.floor(Math.random() * domain.funcs.length);
-        const fn = domain.funcs[fnIdx];
-        if (!fn) fail(400, 'Unknown function');
-        const seed = input.seed != null && input.seed !== '' ? Number.parseInt(input.seed, 10) : Math.floor(Math.random() * 1e9);
-        if (!Number.isFinite(seed)) fail(400, 'Missing seed');
-        const day = Math.max(0, Number.parseInt(input.day, 10) || 0);
-        return json(boxMeta({ mode: 'practice', day, domainId: domain.id, fnIdx, seed, domain, fn }));
-      }
-      return json(boxMeta(resolveBox(input)));
-    }
-
-    if (route === '/api/box/run') {
-      const round = resolveBox(input);
-      const item = coerce(round.domain, input.input);
-      if (boxUsed(round, input.tested).has(item)) fail(409, 'Already tested');
-      return json({ input: item, output: B.run(round.domain, round.fn, item) });
-    }
-
-    if (route === '/api/box/prove') {
-      const round = resolveBox(input);
-      return json({ items: boxProve(round, input.tested, input.proveRound).map((p) => ({ input: p.input })) });
-    }
-
-    if (route === '/api/box/check') {
-      const round = resolveBox(input);
-      const prove = boxProve(round, input.tested, input.proveRound);
-      const guesses = new Map((input.answers || []).map((a) => [String(coerce(round.domain, a.input)), String(a.output ?? '')]));
-      if (prove.some((p) => !guesses.has(String(p.input)))) fail(400, 'Fill in all four');
-      const results = prove.map((p) => ({ input: p.input, output: p.output, ok: B.sameOut(guesses.get(String(p.input)), p.output) }));
-      const allRight = results.every((r) => r.ok);
-      return json({ results, allRight, reveal: allRight ? boxReveal(round) : null });
-    }
-
-    if (route === '/api/box/reveal') {
-      return json(boxReveal(resolveBox(input)));
     }
 
     return json({ error: 'Not found' }, 404);

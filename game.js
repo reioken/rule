@@ -1,21 +1,17 @@
-/* Deductidle — game loop for both puzzles. Vanilla JS module. Rules stay on the server. */
+/* Deductidle — game loop. Vanilla JS module. Rules stay on the server. */
 import { RuleCatalog as D } from './catalog.js';
-import { dayIndex, domainFor, boxDomainFor } from './schedule.js';
+import { dayIndex } from './schedule.js';
 import {
   normalizePhase, starsFor, starsStillPossible, starGlyphs, shareText,
-  alreadyOnBoard, proveReady, boxProveReady, needAnotherLook, evidenceLede, inputHint, parseMessage,
+  alreadyOnBoard, proveReady, needAnotherLook, evidenceLede, inputHint, parseMessage,
 } from './logic.js';
 
 const I = window.RuleIcons;
 const $ = (id) => document.getElementById(id);
 const SORT_PREFIX = 'deductidle.v2.day.';
-const BOX_PREFIX = 'deductidle.v1.box.';
 const STATS_KEY = 'rule.v2.stats';
-const BOX_STATS_KEY = 'deductidle.v1.boxstats';
 const THEME_KEY = 'deductidle.theme';
-const TAB_KEY = 'deductidle.tab';
 const LEVEL_NAMES = { 1: 'Easy', 2: 'Hard', 3: 'Brutal' };
-const BOX_NAMES = { numbers: 'Numbers', words: 'Words' };
 
 const store = {
   get(key, fallback) { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; } },
@@ -67,9 +63,7 @@ function initTheme() {
   applyTheme(saved === 'dark' || saved === 'light' ? saved : currentTheme());
 }
 
-/* =====================================================================
-   IN OR OUT
-   ===================================================================== */
+/* ---------- round state ---------- */
 let S = null;
 const domain = () => D[S.domainId];
 const tests = () => S.log.filter((e) => e.kind === 'test');
@@ -325,7 +319,6 @@ function renderSort(latestItem) {
   if (S.phase === 'explore') renderExplore(latestItem);
   else if (S.phase === 'prove') renderProve();
   else renderResult();
-  updateTabs();
 }
 
 async function probe(item) {
@@ -417,218 +410,13 @@ function recordSort() {
   store.set(STATS_KEY, st);
 }
 
-/* =====================================================================
-   BLACK BOX
-   ===================================================================== */
-let X = null;
-const boxRuns = () => X.log.filter((e) => e.kind === 'test');
-const boxStars = () => starsFor({ result: X.result, strokes: X.strokes, par: X.par });
-function boxBody() {
-  const body = { mode: X.mode, day: X.day };
-  if (X.mode === 'practice') { body.domainId = X.domainId; body.fnIdx = X.fnIdx; body.seed = X.seed; }
-  return body;
-}
-function newBox(meta) {
-  X = { mode: meta.mode, day: meta.day, domainId: meta.domainId, fnIdx: meta.fnIdx, seed: meta.seed, par: meta.par, given: meta.given,
-    phase: 'explore', strokes: 0, log: [], proveRound: 0, proveFails: 0, proveItems: [], proveAnswers: {}, result: null, recorded: false, reveal: null };
-  return X;
-}
-const saveBox = () => { if (X.mode === 'daily') store.set(BOX_PREFIX + X.day, X); };
-function hydrateBox(saved, meta) {
-  X = saved; X.phase = normalizePhase(X.phase); X.par = meta.par; X.given = meta.given;
-  X.proveItems = Array.isArray(X.proveItems) ? X.proveItems : []; X.proveAnswers = X.proveAnswers && typeof X.proveAnswers === 'object' ? X.proveAnswers : {};
-  if (X.phase === 'prove' && X.proveItems.length !== 4) X.phase = 'explore';
-}
-const boxMeta = () => `${X.mode === 'daily' ? `Daily ${X.day + 1}` : 'Practice'} · ${BOX_NAMES[X.domainId]}`;
-const cell = (v, cls) => `<div class="cell ${cls}${String(v).length > 8 ? ' long' : ''}">${v}</div>`;
-function renderBoxRows(latest) {
-  const rows = $('boxRows');
-  rows.replaceChildren();
-  const all = [...X.given.map((g) => ({ ...g, kind: 'given' })), ...X.log];
-  for (const r of all) {
-    const el = document.createElement('div');
-    const isLatest = latest !== undefined && String(r.input) === String(latest);
-    el.className = `mrow ${r.kind === 'given' ? 'given' : 'mine'}${isLatest ? ' latest enter' : ''}`;
-    el.innerHTML = `${cell(r.input, 'in')}<span class="arrow">${I.icon('arrow-right')}</span>${cell(r.output, 'out')}`;
-    rows.appendChild(el);
-  }
-}
-function renderBoxStatus() {
-  const possible = X.phase === 'result' ? boxStars() : starsStillPossible(X.strokes, X.par);
-  $('boxRunCount').textContent = `Runs ${X.strokes}`;
-  $('boxStarStatus').innerHTML = `<span class="vh">${possible} stars still possible</span><span aria-hidden="true">${starGlyphs(possible)} still possible</span>`;
-  $('boxStatusRow').hidden = X.phase === 'result';
-}
-function renderBoxExplore(latest) {
-  $('meta').textContent = boxMeta();
-  $('boxHeadline').textContent = 'What does the box do?';
-  $('boxLede').textContent = `Three ${X.domainId} went in and came out changed. Feed it your own to work out what it does.`;
-  $('boxHeadline').parentElement.hidden = false;
-  $('machine').hidden = false; $('boxProveBoard').hidden = true;
-  $('boxTestPanel').hidden = false; $('boxProveActions').hidden = true; $('boxResultPanel').hidden = true;
-  renderBoxRows(latest);
-  const hint = X.domainId === 'numbers' ? 'Feed it a number' : 'Feed it a word';
-  $('boxLabel').textContent = hint; $('boxInput').placeholder = hint; $('boxInput').inputMode = X.domainId === 'numbers' ? 'numeric' : 'text';
-  $('btnRun').disabled = !$('boxInput').value.trim();
-  renderBoxStatus();
-  if (!boxGiveUp.armed && !boxGiveUp.busy) { $('btnBoxGiveUp').disabled = false; $('btnBoxGiveUp').textContent = 'Give up'; }
-}
-function renderBoxProve() {
-  $('meta').textContent = boxMeta();
-  $('boxHeadline').textContent = 'Predict all four.';
-  $('boxLede').textContent = 'Type what comes out. Every one has to be right.';
-  $('machine').hidden = true; $('boxProveBoard').hidden = false;
-  $('boxTestPanel').hidden = true; $('boxProveActions').hidden = false; $('boxResultPanel').hidden = true;
-  renderBoxStatus();
-  const grid = $('boxProveGrid');
-  grid.replaceChildren();
-  X.proveItems.forEach((p, i) => {
-    const row = document.createElement('div');
-    row.className = 'brow';
-    row.dataset.input = String(p.input);
-    row.innerHTML = `${cell(p.input, 'in')}<span class="arrow">${I.icon('arrow-right')}</span><input id="bp-${i}" aria-label="Output for ${p.input}" autocomplete="off" inputmode="${X.domainId === 'numbers' ? 'numeric' : 'text'}"><div class="truth"></div>`;
-    const inp = row.querySelector('input');
-    inp.value = X.proveAnswers[String(p.input)] || '';
-    inp.addEventListener('input', () => { X.proveAnswers[String(p.input)] = inp.value; saveBox(); $('btnBoxCheck').disabled = !boxProveReady(X.proveItems, X.proveAnswers); say($('boxProveFeedback'), ''); });
-    grid.appendChild(row);
-  });
-  $('btnBoxCheck').disabled = !boxProveReady(X.proveItems, X.proveAnswers);
-  $('btnBoxBack').disabled = false;
-}
-function boxShare() {
-  return shareText({ game: 'box', mode: X.mode, day: X.day, domainName: BOX_NAMES[X.domainId], stars: boxStars(), result: X.result, log: X.log, proveFails: X.proveFails });
-}
-function renderBoxResult() {
-  $('meta').textContent = boxMeta();
-  $('boxHeadline').parentElement.hidden = true;
-  $('machine').hidden = true; $('boxProveBoard').hidden = true;
-  $('boxTestPanel').hidden = true; $('boxProveActions').hidden = true; $('boxResultPanel').hidden = false;
-  $('boxStatusRow').hidden = true;
-  const solved = X.result === 'solved';
-  const got = boxStars();
-  $('boxDoneHeadline').textContent = solved ? 'You cracked the box.' : 'The box';
-  $('boxScore').innerHTML = starsHtml(got);
-  $('boxScore').setAttribute('aria-label', `${got} of 3 stars`);
-  $('boxDoneTests').textContent = `${X.strokes} ${X.strokes === 1 ? 'run' : 'runs'}`;
-  const rev = X.reveal || {};
-  $('boxDoneName').textContent = rev.name || '';
-  $('boxDoneDetail').textContent = rev.detail || '';
-  $('boxLookalikeBlock').hidden = !rev.lookalike;
-  $('boxLookalike').innerHTML = rev.lookalike ? `The three given pairs also fit <b>${rev.lookalike.toLowerCase()}</b>.` : '';
-  $('boxShareText').textContent = boxShare();
-  $('boxPracticeKind').value = X.domainId;
-  say($('boxResultFeedback'), '');
-}
-function renderBox(latest) {
-  if (X.phase === 'explore') renderBoxExplore(latest);
-  else if (X.phase === 'prove') renderBoxProve();
-  else renderBoxResult();
-  updateTabs();
-}
-async function runBox(raw) {
-  const parsed = D[X.domainId].parse(raw);
-  if (parsed.error) { say($('boxFeedback'), parsed.error); return; }
-  const item = parsed.item;
-  if (alreadyOnBoard(X.given, X.log, item)) { say($('boxFeedback'), 'Already ran that one.'); return; }
-  $('btnRun').disabled = true;
-  let res;
-  try { res = await api('/api/box/run', { ...boxBody(), input: item, tested: X.log.map((e) => e.input) }); }
-  catch (err) { say($('boxFeedback'), err.message === 'Already tested' ? 'Already ran that one.' : err.message); $('btnRun').disabled = false; return; }
-  X.strokes += 1;
-  X.log.push({ input: res.input, output: res.output, kind: 'test' });
-  saveBox();
-  renderBoxRows(res.input);
-  say($('boxFeedback'), `${res.input} → ${res.output}`, 'box');
-  $('boxInput').value = ''; $('boxInput').focus(); $('btnRun').disabled = true;
-  renderBoxStatus();
-  document.querySelector('.mrow.latest')?.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' });
-}
-async function checkBox() {
-  if (!boxProveReady(X.proveItems, X.proveAnswers)) { say($('boxProveFeedback'), 'Fill in all four first.'); return; }
-  $('btnBoxCheck').disabled = true; $('btnBoxBack').disabled = true;
-  let res;
-  try {
-    res = await api('/api/box/check', { ...boxBody(), tested: X.log.map((e) => e.input), proveRound: X.proveRound,
-      answers: X.proveItems.map((p) => ({ input: p.input, output: X.proveAnswers[String(p.input)] })) });
-  } catch (err) { say($('boxProveFeedback'), err.message || 'Could not check.'); $('btnBoxCheck').disabled = false; $('btnBoxBack').disabled = false; return; }
-  let wrong = 0;
-  for (const row of $('boxProveGrid').children) {
-    const r = res.results.find((x) => String(x.input) === row.dataset.input);
-    const ok = r && r.ok;
-    if (!ok) wrong += 1;
-    row.classList.add(ok ? 'correct' : 'incorrect');
-    row.querySelector('.truth').textContent = ok ? '' : `It gave ${r.output}.`;
-    row.querySelector('input').disabled = true;
-  }
-  if (res.allRight) {
-    say($('boxProveFeedback'), 'All four are right.', 'in');
-    X.result = 'solved'; X.phase = 'result'; X.reveal = res.reveal;
-    recordBox(); saveBox();
-    setTimeout(() => renderBox(), reduceMotion ? 0 : 220);
-  } else {
-    X.proveFails += 1; X.proveRound += 1; X.strokes += 2;
-    X.log.push(...res.results.map((p) => ({ input: p.input, output: p.output, kind: 'prove' })));
-    X.proveItems = []; X.proveAnswers = {}; X.phase = 'explore';
-    saveBox();
-    say($('boxProveFeedback'), needAnotherLook(wrong));
-    setTimeout(() => { renderBox(); say($('boxFeedback'), `${needAnotherLook(wrong)} Those four join the log. +2 runs.`); }, reduceMotion ? 400 : 900);
-  }
-}
-const boxGiveUp = { armed: false, busy: false, timer: null };
-function resetBoxGiveUp() {
-  boxGiveUp.armed = false; boxGiveUp.busy = false; clearTimeout(boxGiveUp.timer);
-  const btn = $('btnBoxGiveUp'); if (btn) { btn.disabled = false; btn.textContent = 'Give up'; }
-}
-async function doBoxGiveUp() {
-  if (boxGiveUp.busy) return;
-  const btn = $('btnBoxGiveUp');
-  if (!boxGiveUp.armed) { btn.textContent = 'Show what it does'; boxGiveUp.armed = true; clearTimeout(boxGiveUp.timer); boxGiveUp.timer = setTimeout(resetBoxGiveUp, 8000); return; }
-  clearTimeout(boxGiveUp.timer); boxGiveUp.busy = true; btn.disabled = true;
-  try { X.reveal = await api('/api/box/reveal', boxBody()); }
-  catch { boxGiveUp.busy = false; btn.disabled = false; say($('boxFeedback'), 'Could not reveal.'); return; }
-  boxGiveUp.armed = false; boxGiveUp.busy = false;
-  X.result = 'gaveup'; X.phase = 'result';
-  recordBox(); saveBox(); renderBox();
-}
-function recordBox() {
-  if (X.mode !== 'daily' || X.recorded) return;
-  X.recorded = true;
-  const st = { played: 0, solved: 0, streak: 0, best: 0, lastDay: null, stars: 0, runs: 0, ...store.get(BOX_STATS_KEY, {}) };
-  st.played += 1; st.runs += boxRuns().length; st.stars += boxStars();
-  if (X.result === 'solved') { st.solved += 1; st.streak = st.lastDay === X.day - 1 ? st.streak + 1 : 1; st.best = Math.max(st.best, st.streak); }
-  else st.streak = 0;
-  st.lastDay = X.day;
-  store.set(BOX_STATS_KEY, st);
-}
-
-/* =====================================================================
-   TABS, HELP, BOOT
-   ===================================================================== */
-let tab = store.get(TAB_KEY, 'sort') === 'box' ? 'box' : 'sort';
-function updateTabs() {
-  const sortDone = S && S.mode === 'daily' && S.phase === 'result';
-  const boxDone = X && X.mode === 'daily' && X.phase === 'result';
-  const sub = (el, text, done) => { el.textContent = text; el.classList.toggle('done', !!done); };
-  sub($('tabSortSub'), sortDone ? `${starGlyphs(starsNow())}` : `${D[domainFor(day)].name}${S && S.level >= 2 ? ' · ' + LEVEL_NAMES[S.level] : ''}`, sortDone);
-  sub($('tabBoxSub'), boxDone ? `${starGlyphs(boxStars())}` : BOX_NAMES[boxDomainFor(day)], boxDone);
-}
-function showTab(which) {
-  tab = which;
-  store.set(TAB_KEY, tab);
-  $('tabSort').setAttribute('aria-selected', String(tab === 'sort'));
-  $('tabBox').setAttribute('aria-selected', String(tab === 'box'));
-  $('gameSort').hidden = tab !== 'sort';
-  $('gameBox').hidden = tab !== 'box';
-  if (tab === 'sort' && S) renderSort(); else if (tab === 'box' && X) renderBox();
-}
+/* ---------- help, boot ---------- */
 function fillHelpStats() {
   const st = { ...emptyStats, ...store.get(STATS_KEY, {}) };
-  const bx = { played: 0, solved: 0, streak: 0, stars: 0, ...store.get(BOX_STATS_KEY, {}) };
   const box = $('helpStats');
-  if (!st.played && !bx.played) { box.hidden = true; return; }
+  if (!st.played) { box.hidden = true; return; }
   box.hidden = false;
-  box.innerHTML = `<div>In or out · played <b>${st.played}</b> · solved <b>${st.solved}</b> · stars <b>${st.stars}</b> · streak <b>${st.streak}</b></div>
-    <div>Black box · played <b>${bx.played}</b> · solved <b>${bx.solved}</b> · stars <b>${bx.stars}</b> · streak <b>${bx.streak}</b></div>`;
+  box.innerHTML = `<div>Played <b>${st.played}</b> · solved <b>${st.solved}</b></div><div>Stars <b>${st.stars}</b> · streak <b>${st.streak}</b></div>`;
 }
 
 /* ---------- wiring: sort ---------- */
@@ -663,31 +451,7 @@ $('btnPractice').addEventListener('click', async () => {
   } catch { say($('resultFeedback'), 'Could not start practice.'); }
 });
 
-/* ---------- wiring: box ---------- */
-$('boxForm').addEventListener('submit', (e) => { e.preventDefault(); const raw = $('boxInput').value; if (raw.trim()) runBox(raw); });
-$('boxInput').addEventListener('input', () => { $('btnRun').disabled = !$('boxInput').value.trim(); if ($('boxFeedback').textContent) say($('boxFeedback'), ''); });
-$('btnBoxProve').addEventListener('click', async () => {
-  try {
-    const res = await api('/api/box/prove', { ...boxBody(), tested: X.log.map((e) => e.input), proveRound: X.proveRound });
-    X.proveItems = res.items; X.proveAnswers = {}; X.phase = 'prove';
-    saveBox(); renderBox(); window.scrollTo(0, 0);
-    $('bp-0')?.focus();
-  } catch { say($('boxFeedback'), 'Could not load Prove.'); }
-});
-$('btnBoxBack').addEventListener('click', () => { X.phase = 'explore'; saveBox(); renderBox(); });
-$('btnBoxCheck').addEventListener('click', checkBox);
-$('btnBoxGiveUp').addEventListener('click', doBoxGiveUp);
-$('btnBoxShare').addEventListener('click', () => copyText(boxShare(), $('boxResultFeedback')));
-$('btnBoxPractice').addEventListener('click', async () => {
-  try {
-    const meta = await api('/api/box/round', { mode: 'practice', day: X.day, domainId: $('boxPracticeKind').value });
-    newBox(meta); renderBox(); window.scrollTo(0, 0); $('boxInput').focus();
-  } catch { say($('boxResultFeedback'), 'Could not start practice.'); }
-});
-
-/* ---------- tabs, help, theme ---------- */
-$('tabSort').addEventListener('click', () => showTab('sort'));
-$('tabBox').addEventListener('click', () => showTab('box'));
+/* ---------- help, theme ---------- */
 $('btnHelp').addEventListener('click', () => { fillHelpStats(); $('dlgHelp').showModal(); });
 $('btnTheme').addEventListener('click', () => { const next = currentTheme() === 'dark' ? 'light' : 'dark'; store.set(THEME_KEY, next); applyTheme(next); });
 
@@ -695,18 +459,13 @@ I.mount();
 initTheme();
 (async () => {
   try {
-    const [meta, bmeta] = await Promise.all([api(`/api/round?day=${day}&mode=daily`), api(`/api/box/round?day=${day}&mode=daily`)]);
+    const meta = await api(`/api/round?day=${day}&mode=daily`);
     const saved = store.get(SORT_PREFIX + day, null);
     if (saved && saved.seed === meta.seed && saved.domainId === meta.domainId && Array.isArray(saved.evidence)) hydrate(saved, meta);
     else { newRound(meta); save(); }
-    const bsaved = store.get(BOX_PREFIX + day, null);
-    if (bsaved && bsaved.seed === bmeta.seed && bsaved.domainId === bmeta.domainId && Array.isArray(bsaved.given)) hydrateBox(bsaved, bmeta);
-    else { newBox(bmeta); saveBox(); }
-    showTab(tab);
-    if (tab === 'sort') renderBox(); else renderSort();
-    showTab(tab);
+    renderSort();
   } catch {
-    $('headline').textContent = 'Could not load today’s puzzles.';
+    $('headline').textContent = 'Could not load today’s puzzle.';
     $('lede').textContent = 'Refresh to try again.';
   }
 })();
