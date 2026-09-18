@@ -1,6 +1,6 @@
 /* Deductidle — game loop. Vanilla JS module. Rules stay on the server. */
 import { RuleCatalog as D } from './catalog.js';
-import { dayIndex, domainFor, levelFor, LAUNCH_UTC } from './schedule.js';
+import { dayIndex, domainFor, levelFor, LAUNCH_UTC, DAILY_DOMAINS } from './schedule.js';
 import {
   normalizePhase, starsFor, starsStillPossible, starGlyphs, shareText, SHARE_URL,
   alreadyOnBoard, proveReady, needAnotherLook, evidenceLede, inputHint, parseMessage,
@@ -185,9 +185,9 @@ function renderPhaseHead() {
   if (S.phase === 'explore') {
     $('headline').textContent = 'What’s the rule?';
     if (S.joined === 'hidden') {
-      $('lede').innerHTML = `${evidenceLede(S.evidence.length)} Today it is <b>two simple rules</b> joined by <span class="joiner">and</span> <span class="joiner">or</span> or <span class="joiner">unless</span>. Which one is part of the puzzle.`;
+      $('lede').innerHTML = `${evidenceLede(S.evidence.length)} Today it is <b>two simple rules</b>, and the join is hidden: <span class="nb"><span class="joiner">and</span>,</span> <span class="joiner">or</span> or <span class="nb"><span class="joiner">unless</span>.</span>`;
     } else if (S.joined) {
-      $('lede').innerHTML = `${evidenceLede(S.evidence.length)} Today it is <b>two simple rules</b> joined by <span class="joiner">${S.joined}</span>.`;
+      $('lede').innerHTML = `${evidenceLede(S.evidence.length)} Today it is <b>two simple rules</b> joined by <span class="nb"><span class="joiner">${S.joined}</span>.</span>`;
     } else $('lede').textContent = `${evidenceLede(S.evidence.length)} Test anything when you have a theory.`;
   } else if (S.phase === 'prove') {
     $('headline').textContent = 'Sort all six.';
@@ -300,25 +300,32 @@ function renderTray() {
   if (dom.input === 'pair') {
     tray.className = 'tray pair';
     const names = { S: 'spades', H: 'hearts', D: 'diamonds', C: 'clubs' };
-    tray.append(
-      tokenNode(cardKey(), { selected: true }),
+    const rows = document.createElement('div');
+    rows.className = 'picker-rows';
+    rows.append(
       segRow('ranks', 'Rank', D.cards.RANKS, () => cardSel.rank, (v) => { cardSel.rank = v; }, (r) => D.cards.RANK_MARK[r] || String(r)),
       segRow('suits', 'Suit', D.cards.SUITS, () => cardSel.suit, (v) => { cardSel.suit = v; }, (s) => `<span class="t-card ${s === 'H' || s === 'D' ? 'red' : 'blk'}" aria-label="${names[s]}">${D.cards.SUIT_MARK[s]}</span>`),
     );
+    const wrap = document.createElement('div');
+    wrap.className = 'picker';
+    wrap.append(tokenNode(cardKey(), { selected: true }), rows);
+    tray.appendChild(wrap);
     setTestEnabled(true);
     return;
   }
   tray.className = 'tray pair';
-  const box = document.createElement('div');
-  box.className = 'builder';
-  box.append(
-    tokenNode(selKey(), { selected: true }),
-    segRow('', 'Sides', D.shapes.SIDES, () => sel.sides, (v) => { sel.sides = v; }, (s) => D.shapes.svg(`${s}:${sel.color}:outline`, 22)),
+  const rows = document.createElement('div');
+  rows.className = 'picker-rows';
+  rows.append(
+    segRow('sides', 'Sides', D.shapes.SIDES, () => sel.sides, (v) => { sel.sides = v; }, (s) => D.shapes.svg(`${s}:${sel.color}:outline`, 22)),
     segRow('', 'Color', D.shapes.COLORS, () => sel.color, (v) => { sel.color = v; }, (c) => `<span class="t-color" style="background:${D.shapes.HEX[c]}"></span>`),
     segRow('', 'Fill', D.shapes.FILLS, () => sel.fill, (v) => { sel.fill = v; }, (f) => f),
     segRow('', 'Size', D.shapes.SIZES, () => sel.size, (v) => { sel.size = v; }, (z) => z),
   );
-  tray.appendChild(box);
+  const wrap = document.createElement('div');
+  wrap.className = 'picker';
+  wrap.append(tokenNode(selKey(), { selected: true }), rows);
+  tray.appendChild(wrap);
   setTestEnabled(true);
 }
 function renderInput() {
@@ -344,6 +351,7 @@ function renderInput() {
 /* ---------- views ---------- */
 function renderExplore(latestItem) {
   renderPhaseHead();
+  if (latestItem === undefined) { say($('feedback'), ''); say($('proveFeedback'), ''); }
   $('exploreBoard').hidden = false; $('proveBoard').hidden = true;
   $('testPanel').hidden = false; $('proveActions').hidden = true; $('resultPanel').hidden = true;
   renderBoard(latestItem);
@@ -583,7 +591,7 @@ function renderStatsDialog() {
   const pct = st.played ? Math.round((100 * st.solved) / st.played) : 0;
   const avgStars = st.played ? (st.stars / st.played).toFixed(1) : '–';
   const fals = st.tests ? Math.round((100 * st.testsOut) / st.tests) : 0;
-  const tiles = [[st.played, 'Played'], [`${pct}%`, 'Solved'], [avgStars, 'Avg stars'], [st.streak, 'Streak'], [st.best, 'Best streak'], [st.tests ? `${fals}%` : '–', 'Falsifier']];
+  const tiles = [[st.played, 'Played'], [`${pct}%`, 'Solved'], [avgStars, 'Avg stars'], [st.streak, 'Streak'], [st.best, 'Best'], [st.tests ? `${fals}%` : '–', 'Falsifier']];
   $('statTiles').innerHTML = tiles.map(([v, l]) => `<div class="tile-stat"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
   const cal = [];
   for (let d = today - 27; d <= today; d++) {
@@ -592,7 +600,7 @@ function renderStatsDialog() {
     cal.push(`<i class="${cls}${d === today ? ' today' : ''}" title="${d >= 0 ? `Daily ${d + 1}` : ''}"></i>`);
   }
   $('calendar').innerHTML = cal.join('');
-  $('statDomains').innerHTML = D.list.map((d) => {
+  $('statDomains').innerHTML = D.list.filter((d) => DAILY_DOMAINS.includes(d.id)).map((d) => {
     const x = (st.domains || {})[d.id] || { played: 0, solved: 0 };
     const w = x.played ? Math.round((100 * x.solved) / x.played) : 0;
     return `<div><span>${d.name}</span><span class="bar"><i style="width:${w}%"></i></span><b>${x.solved} / ${x.played}</b></div>`;
@@ -749,6 +757,8 @@ I.mount();
 initTheme();
 applySound();
 renderBelow();
+/* Test hook: the round state holds no rule, only what the player can already see. */
+window.__deductidle = { state: () => S, loadDay, practice: async (domainId, level) => { const meta = await api('/api/round', { mode: 'practice', day: S.day, domainId, level }); newRound(meta); renderSort(); return S; } };
 (async () => {
   const wanted = Number.parseInt(new URL(location.href).searchParams.get('day'), 10);
   const day = Number.isFinite(wanted) && wanted >= 1 && wanted - 1 <= today ? wanted - 1 : today;

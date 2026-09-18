@@ -107,15 +107,15 @@
           <button class="btn" id="btnImage" type="button" data-icon="image"><span>Save image</span></button>
         </div>
         <div class="practice-row">
-          <label class="vh" for="practiceKind">Practice type</label>
-          <select id="practiceKind"></select>
-          <label class="vh" for="practiceLevel">Practice difficulty</label>
-          <select id="practiceLevel">
+          <div class="selects">
+            <label class="select"><span class="vh" id="practiceKindLabel">Practice type</span><select id="practiceKind" aria-labelledby="practiceKindLabel"></select></label>
+            <label class="select"><span class="vh" id="practiceLevelLabel">Practice difficulty</span><select id="practiceLevel" aria-labelledby="practiceLevelLabel">
             <option value="">Any difficulty</option>
             <option value="1">Easy · one rule</option>
             <option value="2">Hard · two rules joined</option>
             <option value="3">Brutal · two rules, join hidden</option>
-          </select>
+          </select></label>
+          </div>
           <button class="btn ghost" id="btnPractice" type="button">Try a practice puzzle</button>
         </div>
       </section>
