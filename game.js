@@ -60,7 +60,43 @@ function applyTheme(theme) {
 }
 function initTheme() {
   const saved = store.get(THEME_KEY, null);
-  applyTheme(saved === 'dark' || saved === 'light' ? saved : currentTheme());
+  applyTheme(saved === 'dark' || saved === 'light' ? saved : 'dark');
+}
+
+/* ---------- celebration ---------- */
+let celebratedKey = null;
+function celebrate(stars) {
+  const key = `${S.mode}-${S.day}-${S.seed}`;
+  if (reduceMotion || celebratedKey === key) return;
+  celebratedKey = key;
+  const canvas = $('fx');
+  const ctx = canvas.getContext('2d');
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = window.innerWidth * dpr; canvas.height = window.innerHeight * dpr;
+  ctx.scale(dpr, dpr);
+  const css = getComputedStyle(document.documentElement);
+  const colors = [css.getPropertyValue('--in').trim(), css.getPropertyValue('--amber').trim(), css.getPropertyValue('--ink').trim(), css.getPropertyValue('--out').trim()];
+  const W = window.innerWidth, H = window.innerHeight;
+  const n = 26 + stars * 14;
+  const parts = Array.from({ length: n }, () => ({
+    x: W * (0.3 + Math.random() * 0.4), y: H * 0.28,
+    vx: (Math.random() - 0.5) * 9, vy: -6 - Math.random() * 7,
+    r: 3 + Math.random() * 4, a: Math.random() * Math.PI, va: (Math.random() - 0.5) * 0.3,
+    c: colors[Math.floor(Math.random() * colors.length)], life: 1,
+  }));
+  const t0 = performance.now();
+  function frame(t) {
+    const dt = Math.min(32, t - (frame.last || t)) / 16; frame.last = t;
+    ctx.clearRect(0, 0, W, H);
+    for (const p of parts) {
+      p.vy += 0.28 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.a += p.va * dt; p.life -= 0.012 * dt;
+      if (p.life <= 0) continue;
+      ctx.save(); ctx.globalAlpha = Math.max(0, p.life); ctx.translate(p.x, p.y); ctx.rotate(p.a);
+      ctx.fillStyle = p.c; ctx.fillRect(-p.r, -p.r * 0.6, p.r * 2, p.r * 1.2); ctx.restore();
+    }
+    if (t - t0 < 1800) requestAnimationFrame(frame); else ctx.clearRect(0, 0, W, H);
+  }
+  requestAnimationFrame(frame);
 }
 
 /* ---------- round state ---------- */
@@ -108,11 +144,11 @@ function tokenNode(item, { compact = false, selected = false } = {}) {
 }
 
 function sortMeta() {
-  const lvl = S.level ? ` · ${LEVEL_NAMES[S.level]}` : '';
-  return S.mode === 'daily' ? `Daily ${S.day + 1} · ${domain().name}${lvl}` : `Practice · ${domain().name}${lvl}`;
+  const lvl = S.level ? ` <span class="lvl l${S.level}">${LEVEL_NAMES[S.level]}</span>` : '';
+  return `<span>${S.mode === 'daily' ? `Daily ${S.day + 1}` : 'Practice'} · ${domain().name}</span>${lvl}`;
 }
 function renderPhaseHead() {
-  $('meta').textContent = sortMeta();
+  $('meta').innerHTML = sortMeta();
   if (S.phase === 'explore') {
     $('headline').textContent = 'What’s the rule?';
     $('lede').textContent = `${evidenceLede(S.evidence.length)} ${S.level >= 2 ? 'Today it joins two conditions.' : 'Test anything when you have a theory.'}`;
@@ -124,8 +160,8 @@ function renderPhaseHead() {
 }
 function renderStatus() {
   const possible = S.phase === 'result' ? starsNow() : starsStillPossible(S.strokes, S.par);
-  $('testCount').textContent = `Tests ${S.strokes}`;
-  $('starStatus').innerHTML = `<span class="vh">${possible} star${possible === 1 ? '' : 's'} still possible</span><span aria-hidden="true">${starGlyphs(possible)} still possible</span>`;
+  $('testCount').innerHTML = `<span class="pill">Tests ${S.strokes}</span>`;
+  $('starStatus').innerHTML = `<span class="vh">${possible} star${possible === 1 ? '' : 's'} still possible</span><span class="stars" aria-hidden="true">${'★'.repeat(possible)}<span class="dim">${'★'.repeat(3 - possible)}</span></span> <span aria-hidden="true">possible</span>`;
   $('statusRow').hidden = S.phase === 'result';
 }
 function renderBoard(latestItem) {
@@ -290,7 +326,7 @@ function sortShare() {
 }
 function renderResult() {
   renderPhaseHead();
-  $('meta').textContent = sortMeta();
+  $('meta').innerHTML = sortMeta();
   $('exploreBoard').hidden = true; $('proveBoard').hidden = true;
   $('testPanel').hidden = true; $('proveActions').hidden = true; $('resultPanel').hidden = false;
   $('statusRow').hidden = true;
@@ -299,6 +335,7 @@ function renderResult() {
   $('doneHeadline').textContent = solved ? 'You found the rule.' : 'The rule';
   $('doneScore').innerHTML = starsHtml(got);
   $('doneScore').setAttribute('aria-label', `${got} of 3 stars`);
+  if (solved && got > 0) celebrate(got);
   $('doneTests').textContent = `${S.strokes} ${S.strokes === 1 ? 'test' : 'tests'}${S.level >= 2 ? ` · ${LEVEL_NAMES[S.level]} day` : ''}`;
   const rev = S.reveal || {};
   $('doneRule').textContent = rev.rule || '';
@@ -335,6 +372,16 @@ async function probe(item) {
   node.classList.remove('hit-in', 'hit-out'); void node.offsetWidth;
   node.classList.add(res.in ? 'hit-in' : 'hit-out');
   setTimeout(() => node.classList.remove('hit-in', 'hit-out'), 700);
+  if (!reduceMotion) {
+    const ring = document.createElement('span');
+    ring.className = `ring${res.in ? '' : ' out'}`;
+    node.appendChild(ring);
+    setTimeout(() => ring.remove(), 900);
+  }
+  const aura = $('aura');
+  aura.classList.remove('in', 'out'); void aura.offsetWidth;
+  aura.classList.add(res.in ? 'in' : 'out');
+  setTimeout(() => aura.classList.remove('in', 'out'), 1200);
   say($('feedback'), `${domain().label(res.item)} is ${res.in ? 'IN' : 'OUT'}.`, res.in ? 'in' : 'out');
   if (domain().input === 'text') { $('probeInput').value = ''; $('probeInput').focus(); setTestEnabled(false); }
   else { trayPick = null; renderTray(); }

@@ -5,8 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Deductidle</title>
   <meta name="description" content="A daily deduction puzzle. Some things follow a secret rule and some don't. Work out the rule, then prove it.">
-  <meta name="theme-color" content="#f1eee6" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#121615" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#0e1013">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
@@ -14,6 +13,8 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <div class="aura" id="aura" aria-hidden="true"><i></i><i></i></div>
+  <canvas class="fx" id="fx" aria-hidden="true"></canvas>
   <div class="game-shell">
     <header class="site-header">
       <p class="wordmark">Deductidle<span class="dot">.</span></p>
@@ -44,9 +45,9 @@
         <div class="prove-grid" id="proveGrid"></div>
       </div>
 
-      <div class="play-dock">
+      <div class="play-dock"><div class="dock-card">
         <div class="status-row" id="statusRow">
-          <p id="testCount">Tests 0</p>
+          <p id="testCount"><span class="pill">Tests 0</span></p>
           <p id="starStatus"></p>
         </div>
 
@@ -70,7 +71,7 @@
           <button class="btn primary" id="btnCheck" type="button" disabled>Check all six</button>
           <button class="btn ghost" id="btnBack" type="button">Keep testing</button>
         </section>
-      </div>
+      </div></div>
 
       <section class="result-panel" id="resultPanel" hidden>
         <p class="result-stars" id="doneScore" aria-label="Stars"></p>
