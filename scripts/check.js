@@ -7,9 +7,9 @@ import { fileURLToPath } from 'node:url';
 import { RuleDomains as D } from '../domains.js';
 import * as E from '../engine.js';
 import { handleApi } from '../api.js';
-import { DAILY_DOMAINS, dayPlan } from '../schedule.js';
+import { DAILY_DOMAINS, LEVELS_PER_DAY, dayPlan } from '../schedule.js';
 import {
-  starsFor, starsStillPossible, shareText, alreadyOnBoard, proveReady,
+  starsFor, starsStillPossible, shareText, dayShareText, alreadyOnBoard, proveReady,
   needAnotherLook, normalizePhase,
 } from '../logic.js';
 
@@ -56,23 +56,30 @@ for (const domain of D.list) {
   if (DAILY_DOMAINS.includes(domain.id) && domain.rules.length - atoms < 3) fail(`compounds ${domain.id}`, `only ${domain.rules.length - atoms} compound rules`);
 }
 for (let day = 0; day < 365; day++) {
-  const pick = E.dailyPick(day);
-  const domain = D[pick.domainId], rule = domain.rules[pick.ruleIdx];
-  if (E.LEVELS[pick.level].compound && rule.level !== 2) fail(`#${day + 1}`, 'hard day without a compound rule');
-  if (rule.level === 2 && (!rule.parts || rule.parts.length !== 2 || !rule.word)) fail(`#${day + 1}`, 'compound rule without its two parts');
-  check(`#${day + 1} ${pick.domainId}/${rule.id}`, domain, rule, pick.seed, 3, pick.level);
+  for (const level of LEVELS_PER_DAY) {
+    const pick = E.dailyPick(day, level);
+    const domain = D[pick.domainId], rule = domain.rules[pick.ruleIdx];
+    if (pick.level !== level) fail(`#${day + 1} L${level}`, `pick came back as level ${pick.level}`);
+    if (E.LEVELS[level].compound !== (rule.level === 2)) fail(`#${day + 1} L${level}`, `${E.LEVELS[level].name} puzzle with the wrong kind of rule`);
+    if (rule.level === 2 && (!rule.parts || rule.parts.length !== 2 || !rule.word)) fail(`#${day + 1} L${level}`, 'compound rule without its two parts');
+    check(`#${day + 1} L${level} ${pick.domainId}/${rule.id}`, domain, rule, pick.seed, 3, level);
+  }
 }
 
-/* The draw: every daily domain and every level shows up often, and no domain repeats on consecutive days. */
+/* The draw: three different kinds each day, every daily domain shows up often, and a slot never repeats its kind on consecutive days. */
 {
-  const dom = {}, lvl = {};
+  const dom = {};
   for (let day = 0; day < 365; day++) {
-    const p = dayPlan(day);
-    dom[p.domainId] = (dom[p.domainId] || 0) + 1; lvl[p.level] = (lvl[p.level] || 0) + 1;
-    if (day > 0 && dayPlan(day - 1).domainId === p.domainId) fail('draw', `day ${day + 1} repeats yesterday's domain`);
+    const slots = dayPlan(day);
+    if (slots.length !== 3 || slots.some((s, i) => s.level !== i + 1)) fail('draw', `day ${day + 1} does not have levels 1, 2, 3`);
+    if (new Set(slots.map((s) => s.domainId)).size !== 3) fail('draw', `day ${day + 1} repeats a kind within the day`);
+    for (const s of slots) {
+      dom[s.domainId] = (dom[s.domainId] || 0) + 1;
+      if (!DAILY_DOMAINS.includes(s.domainId)) fail('draw', `day ${day + 1} draws ${s.domainId}, which is not a daily domain`);
+      if (day > 0 && dayPlan(day - 1)[s.level - 1].domainId === s.domainId) fail('draw', `day ${day + 1} ${E.LEVELS[s.level].name} repeats yesterday's kind`);
+    }
   }
-  for (const id of DAILY_DOMAINS) if ((dom[id] || 0) < 40) fail('draw', `${id} only ${dom[id] || 0} times in a year`);
-  for (const l of [1, 2, 3]) if ((lvl[l] || 0) < 40) fail('draw', `level ${l} only ${lvl[l] || 0} times in a year`);
+  for (const id of DAILY_DOMAINS) if ((dom[id] || 0) < 60) fail('draw', `${id} only ${dom[id] || 0} times in a year`);
 }
 
 /* Within each domain and level band, no rule repeats before the whole band has been used. */
@@ -83,8 +90,10 @@ for (const domain of D.list) {
     const band = domain.rules.map((r, i) => ({ r, i })).filter(({ r }) => (r.level === 2) === compound).map(({ i }) => i);
     const seq = [];
     for (let day = 0; day < 3000 && seq.length < band.length; day++) {
-      const p = E.dailyPick(day);
-      if (p.domainId === domain.id && E.LEVELS[p.level].compound === compound) seq.push(p.ruleIdx);
+      for (const level of LEVELS_PER_DAY) {
+        const p = E.dailyPick(day, level);
+        if (p.domainId === domain.id && E.LEVELS[level].compound === compound) seq.push(p.ruleIdx);
+      }
     }
     if (seq.length && new Set(seq).size !== seq.length) fail(`schedule ${domain.id}`, `${compound ? 'compound' : 'atom'} rules repeat before the band is used up`);
   }
@@ -120,6 +129,15 @@ if (daily.domainId !== 'numbers') fail('api daily', `day 0 domain is ${daily.dom
 if (!daily.evidence || daily.evidence.length !== E.LEVELS[daily.level].evidence) fail('api daily', 'day 0 evidence count does not match its level');
 if (daily.rule || daily.detail || daily.trapName || daily.ruleIdx != null) fail('api daily', 'daily round leaked the rule');
 if (typeof daily.par !== 'number') fail('api daily', 'daily round missing par');
+
+const medium = await (await call('/api/round?day=0&mode=daily&level=2')).json();
+if (medium.level !== 2 || medium.domainId !== 'words') fail('api daily', `day 0 level 2 is ${medium.levelName} ${medium.domainId}, want Medium words`);
+if (!['and', 'or', 'unless'].includes(medium.joined)) fail('api daily', 'Medium round did not say its join');
+const hardR = await (await call('/api/round?day=0&mode=daily&level=3')).json();
+if (hardR.level !== 3 || hardR.joined !== 'hidden') fail('api daily', 'Hard round should hide its join');
+if (medium.seed === daily.seed || hardR.seed === medium.seed) fail('api daily', 'the three puzzles of a day share a seed');
+const badLevel = await (await call('/api/round?day=0&mode=daily&level=9')).json();
+if (badLevel.level !== 1) fail('api daily', 'an unknown level should fall back to Easy');
 
 const probe = await (await call('/api/test', { mode: 'daily', day: 0, item: 8 })).json();
 if (typeof probe.in !== 'boolean') fail('api test', 'test did not return in/out');
@@ -165,11 +183,18 @@ if (alreadyOnBoard([], [{ item: 'cat', kind: 'test' }], 'cat') !== true) fail('d
 if (proveReady([{ item: 1 }, { item: 2 }], { 1: true }) !== false) fail('prove', 'incomplete answers should not be ready');
 if (proveReady([{ item: 1 }, { item: 2 }], { 1: true, 2: false }) !== true) fail('prove', 'complete answers should be ready');
 if (needAnotherLook(2) !== 'Two need another look.') fail('copy', 'wrong-count copy mismatch');
-const share = shareText({ mode: 'daily', day: 0, domainName: 'Numbers', levelName: 'Hard', stars: 2, result: 'solved', log: [{ in: true, kind: 'test' }, { in: false, kind: 'test' }], proveFails: 1 });
+const share = shareText({ mode: 'daily', day: 0, domainName: 'Numbers', levelName: 'Medium', stars: 2, result: 'solved', log: [{ in: true, kind: 'test' }, { in: false, kind: 'test' }], proveFails: 1 });
 const shareLines = share.split('\n');
-if (!shareLines[0].startsWith('Deductidle #1') || !shareLines[0].includes('★★☆')) fail('share', `unexpected share head: ${shareLines[0]}`);
+if (shareLines[0] !== 'Deductidle #1 · Medium · Numbers · ★★☆') fail('share', `unexpected share head: ${shareLines[0]}`);
 if (shareLines[1] !== '🟩⬛ ❌✅') fail('share', `unexpected share row: ${shareLines[1]}`);
 if (!/^https:\/\//.test(shareLines[2] || '')) fail('share', 'share text has no link');
+const dayShare = dayShareText({ day: 1, slots: [
+  { levelName: 'Easy', domainName: 'Emoji', stars: 3, result: 'solved', log: [{ in: true, kind: 'test' }], proveFails: 0 },
+  { levelName: 'Medium', domainName: 'Cards', stars: 0, result: 'gaveup', log: [], proveFails: 1 },
+  { levelName: 'Hard', domainName: 'Words', stars: 1, result: 'solved', log: [{ in: false, kind: 'test' }], proveFails: 0 },
+] }).split('\n');
+if (dayShare[0] !== 'Deductidle #2 · 4/9 ★' || dayShare.length !== 5) fail('share', `unexpected day share: ${dayShare.join(' | ')}`);
+if (dayShare[2] !== 'Medium · Cards ☆☆☆ ❌🏳️') fail('share', `unexpected day share line: ${dayShare[2]}`);
 
 console.log(`${boards} boards checked, ${bad} violation${bad === 1 ? '' : 's'}`);
 process.exit(bad ? 1 : 0);

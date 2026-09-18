@@ -24,16 +24,25 @@ export function starGlyphs(n) {
   return '★'.repeat(n) + '☆'.repeat(Math.max(0, 3 - n));
 }
 
-/* Three lines: who and how well, the shape of the attempt, the link.
+/* Three lines: which puzzle and how well, the shape of the attempt, the link.
    🟩 for a test that came back In, ⬛ for Out, then ❌ per failed prove and ✅ on solve. A give-up ends in 🏳️. */
-export function shareText({ mode, day, domainName, levelName, stars, result, log = [], proveFails = 0 }) {
-  const id = mode === 'daily' ? `#${day + 1}` : 'practice';
-  const hard = levelName && levelName !== 'Easy' ? ` · ${levelName}` : '';
-  const head = `Deductidle ${id} · ${domainName || ''}${hard} · ${starGlyphs(stars)}`;
+export function attemptRow({ result, log = [], proveFails = 0 }) {
   const tests = log.filter((e) => e.kind === 'test');
   const row = tests.map((e) => (e.in ? '🟩' : '⬛')).join('');
   const marks = '❌'.repeat(proveFails) + (result === 'solved' ? '✅' : result === 'gaveup' ? '🏳️' : '');
-  return [head, [row, marks].filter(Boolean).join(' ') || '·', SHARE_URL].join('\n');
+  return [row, marks].filter(Boolean).join(' ') || '·';
+}
+export function shareText({ mode, day, domainName, levelName, stars, result, log = [], proveFails = 0 }) {
+  const id = mode === 'daily' ? `#${day + 1}` : 'practice';
+  const head = [`Deductidle ${id}`, levelName, domainName, starGlyphs(stars)].filter(Boolean).join(' · ');
+  return [head, attemptRow({ result, log, proveFails }), SHARE_URL].join('\n');
+}
+/* The whole day once all three puzzles are finished: one line per puzzle. */
+export function dayShareText({ day, slots }) {
+  const total = slots.reduce((n, s) => n + s.stars, 0);
+  const head = `Deductidle #${day + 1} · ${total}/${3 * slots.length} ★`;
+  const lines = slots.map((s) => `${s.levelName} · ${s.domainName} ${starGlyphs(s.stars)} ${attemptRow(s)}`);
+  return [head, ...lines, SHARE_URL].join('\n');
 }
 
 export function alreadyOnBoard(evidence = [], log = [], item) {

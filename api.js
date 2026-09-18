@@ -24,7 +24,8 @@ function resolveRound(input) {
   const day = Math.max(0, Number.parseInt(input.day, 10) || 0);
   if (mode === 'daily') {
     if (day > dayIndex() + 1) fail(400, 'That day is not out yet'); // one day of clock slack for players ahead of UTC
-    const pick = E.dailyPick(day);
+    const level = [1, 2, 3].includes(Number(input.level)) ? Number(input.level) : 1;
+    const pick = E.dailyPick(day, level);
     const domain = RuleDomains[pick.domainId];
     return { mode, day, ...pick, domain, rule: domain.rules[pick.ruleIdx] };
   }
@@ -90,14 +91,15 @@ function revealPayload(round) {
 }
 
 /* ================= solve rates ================= */
-/* One JSON blob per day in KV: { played, solved, stars: [n0, n1, n2, n3], tests: sum }. Missing binding means no stats. */
-async function readStats(env, day) {
+/* One JSON blob per puzzle in KV: { played, solved, stars: [n0, n1, n2, n3], tests: sum }. Missing binding means no stats. */
+const levelOf3 = (v) => ([1, 2, 3].includes(Number(v)) ? Number(v) : 1);
+async function readStats(env, day, level) {
   if (!env || !env.STATS) return null;
-  try { const raw = await env.STATS.get(`day:${day}`); return raw ? JSON.parse(raw) : { played: 0, solved: 0, stars: [0, 0, 0, 0], tests: 0 }; }
+  try { const raw = await env.STATS.get(`day:${day}:${levelOf3(level)}`); return raw ? JSON.parse(raw) : { played: 0, solved: 0, stars: [0, 0, 0, 0], tests: 0 }; }
   catch { return null; }
 }
-async function recordResult(env, day, input) {
-  const st = await readStats(env, day);
+async function recordResult(env, day, level, input) {
+  const st = await readStats(env, day, level);
   if (!st) return null;
   const solved = input.result === 'solved';
   const stars = Math.max(0, Math.min(3, Number.parseInt(input.stars, 10) || 0));
@@ -106,7 +108,7 @@ async function recordResult(env, day, input) {
   if (solved) st.solved += 1;
   st.stars[solved ? stars : 0] += 1;
   st.tests += tests;
-  try { await env.STATS.put(`day:${day}`, JSON.stringify(st)); } catch { /* best effort */ }
+  try { await env.STATS.put(`day:${day}:${levelOf3(level)}`, JSON.stringify(st)); } catch { /* best effort */ }
   return st;
 }
 function statsPayload(st) {
@@ -189,7 +191,7 @@ export async function handleApi(request, env) {
 
     if (route === '/api/reveal') {
       const round = resolveRound(input);
-      const st = round.mode === 'daily' ? statsPayload(await readStats(env, round.day)) : null;
+      const st = round.mode === 'daily' ? statsPayload(await readStats(env, round.day, round.level)) : null;
       return json({ ...revealPayload(round), stats: st });
     }
 
@@ -197,13 +199,13 @@ export async function handleApi(request, env) {
     if (route === '/api/result') {
       const round = resolveRound(input);
       if (round.mode !== 'daily') return json({ stats: null });
-      const st = await recordResult(env, round.day, input);
+      const st = await recordResult(env, round.day, round.level, input);
       return json({ stats: statsPayload(st) });
     }
 
     if (route === '/api/stats') {
       const day = Math.max(0, Number.parseInt(input.day, 10) || 0);
-      return json({ stats: statsPayload(await readStats(env, day)) });
+      return json({ stats: statsPayload(await readStats(env, day, input.level)) });
     }
 
     return json({ error: 'Not found' }, 404);

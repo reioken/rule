@@ -1,19 +1,18 @@
 /* Deductidle — game loop. Vanilla JS module. Rules stay on the server. */
 import { RuleCatalog as D } from './catalog.js';
-import { dayIndex, domainFor, levelFor, LAUNCH_UTC, DAILY_DOMAINS } from './schedule.js';
+import { dayIndex, dayPlan, LAUNCH_UTC, DAILY_DOMAINS, LEVELS_PER_DAY, LEVEL_NAMES } from './schedule.js';
 import {
-  normalizePhase, starsFor, starsStillPossible, starGlyphs, shareText, SHARE_URL,
+  normalizePhase, starsFor, starsStillPossible, starGlyphs, shareText, dayShareText, SHARE_URL,
   alreadyOnBoard, proveReady, needAnotherLook, evidenceLede, inputHint, parseMessage,
 } from './logic.js';
 
 const I = window.RuleIcons;
 const $ = (id) => document.getElementById(id);
-const SORT_PREFIX = 'deductidle.v2.day.';
-const STATS_KEY = 'rule.v2.stats';
+const SORT_PREFIX = 'deductidle.v3.day.';
+const STATS_KEY = 'deductidle.v3.stats';
 const THEME_KEY = 'deductidle.theme';
 const SOUND_KEY = 'deductidle.sound';
 const COACH_KEY = 'deductidle.coach';
-const LEVEL_NAMES = { 1: 'Easy', 2: 'Hard', 3: 'Brutal' };
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const store = {
@@ -22,6 +21,7 @@ const store = {
 };
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const today = Math.max(0, dayIndex());
+const dayKey = (day, level) => `${SORT_PREFIX}${day}.${level}`;
 const isDesktop = () => window.matchMedia('(min-width: 900px)').matches;
 
 async function api(path, body, method) {
@@ -137,7 +137,7 @@ const tests = () => S.log.filter((e) => e.kind === 'test');
 const starsNow = () => starsFor({ result: S.result, strokes: S.strokes, par: S.par });
 
 function roundBody() {
-  const body = { mode: S.mode, day: S.day };
+  const body = { mode: S.mode, day: S.day, level: S.level };
   if (S.mode === 'practice') { body.domainId = S.domainId; body.ruleIdx = S.ruleIdx; body.seed = S.seed; body.level = S.level; }
   return body;
 }
@@ -150,7 +150,7 @@ function newRound(meta) {
   };
   return S;
 }
-const save = () => { if (S.mode === 'daily') store.set(SORT_PREFIX + S.day, S); };
+const save = () => { if (S.mode === 'daily') store.set(dayKey(S.day, S.level), S); };
 function hydrate(saved, meta) {
   S = saved;
   S.phase = normalizePhase(S.phase);
@@ -177,17 +177,54 @@ function tokenNode(item, { compact = false, selected = false } = {}) {
 
 function sortMeta() {
   const lvl = S.level ? ` <span class="lvl l${S.level}">${LEVEL_NAMES[S.level]}</span>` : '';
-  const when = S.mode === 'daily' ? (S.day === today ? `Daily ${S.day + 1}` : `Archive · Daily ${S.day + 1}`) : 'Practice';
+  const when = S.mode === 'daily' ? (S.day === today ? `Day ${S.day + 1}` : `Archive · Day ${S.day + 1}`) : 'Practice';
   return `<span>${when} · ${domain().name}</span>${lvl}`;
 }
+/* ---------- the three puzzles of the day ---------- */
+const dayState = (day, level) => store.get(dayKey(day, level), null);
+const isDone = (st) => !!(st && st.phase === 'result');
+const slotStars = (st) => (isDone(st) ? starsFor({ result: st.result, strokes: st.strokes, par: st.par }) : null);
+/* Every slot of a day with what the player has done in it. */
+function daySlots(day) {
+  return dayPlan(day).map(({ level, domainId }) => {
+    const st = dayState(day, level);
+    return { level, domainId, name: D[domainId].name, state: st, done: isDone(st), stars: slotStars(st), started: !!(st && st.strokes) };
+  });
+}
+/* The slot to open next: the first unfinished one after the current, wrapping round; null when the day is done. */
+function nextSlot(day, after = 0) {
+  const slots = daySlots(day);
+  const order = [...slots.filter((s) => s.level > after), ...slots.filter((s) => s.level <= after)];
+  return order.find((s) => !s.done) || null;
+}
+function renderSlots() {
+  const day = S && S.mode === 'daily' ? S.day : today;
+  const nav = $('slots');
+  nav.replaceChildren();
+  for (const slot of daySlots(day)) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    const active = S && S.mode === 'daily' && S.day === day && S.level === slot.level;
+    b.className = `slot${active ? ' active' : ''}${slot.done ? ' done' : ''}`;
+    b.setAttribute('aria-current', active ? 'true' : 'false');
+    const status = slot.done ? starGlyphs(slot.stars) : slot.started ? 'in progress' : 'play';
+    b.innerHTML = `<span class="lvl l${slot.level}">${LEVEL_NAMES[slot.level]}</span><span class="dn">${slot.name}</span><span class="st${slot.done ? '' : ' none'}">${status}</span>`;
+    b.setAttribute('aria-label', `${LEVEL_NAMES[slot.level]}, ${slot.name}, ${slot.done ? `${slot.stars} of 3 stars` : status}`);
+    b.addEventListener('click', () => { if (!active) loadDay(day, slot.level).catch(() => {}); });
+    nav.appendChild(b);
+  }
+  nav.hidden = false;
+}
+
 function renderPhaseHead() {
   $('meta').innerHTML = sortMeta();
+  renderSlots();
   if (S.phase === 'explore') {
     $('headline').textContent = 'What’s the rule?';
     if (S.joined === 'hidden') {
-      $('lede').innerHTML = `${evidenceLede(S.evidence.length)} Today it is <b>two simple rules</b>, and the join is hidden: <span class="nb"><span class="joiner">and</span>,</span> <span class="joiner">or</span> or <span class="nb"><span class="joiner">unless</span>.</span>`;
+      $('lede').innerHTML = `${evidenceLede(S.evidence.length)} This one is <b>two simple rules</b>, and the join is hidden: <span class="nb"><span class="joiner">and</span>,</span> <span class="joiner">or</span> or <span class="nb"><span class="joiner">unless</span>.</span>`;
     } else if (S.joined) {
-      $('lede').innerHTML = `${evidenceLede(S.evidence.length)} Today it is <b>two simple rules</b> joined by <span class="nb"><span class="joiner">${S.joined}</span>.</span>`;
+      $('lede').innerHTML = `${evidenceLede(S.evidence.length)} This one is <b>two simple rules</b> joined by <span class="nb"><span class="joiner">${S.joined}</span>.</span>`;
     } else $('lede').textContent = `${evidenceLede(S.evidence.length)} Test anything when you have a theory.`;
   } else if (S.phase === 'prove') {
     $('headline').textContent = 'Sort all six.';
@@ -408,6 +445,12 @@ function setAnswer(item, val) {
   say($('proveFeedback'), '');
 }
 function sortShare() {
+  if (S.mode === 'daily') {
+    const slots = daySlots(S.day);
+    if (slots.every((x) => x.done)) {
+      return dayShareText({ day: S.day, slots: slots.map((x) => ({ levelName: LEVEL_NAMES[x.level], domainName: x.name, stars: x.stars, result: x.state.result, log: x.state.log, proveFails: x.state.proveFails })) });
+    }
+  }
   return shareText({ mode: S.mode, day: S.day, domainName: domain().name, levelName: LEVEL_NAMES[S.level], stars: starsNow(), result: S.result, log: S.log, proveFails: S.proveFails });
 }
 function crowdLine(st) {
@@ -427,7 +470,7 @@ function renderResult() {
   $('doneScore').innerHTML = starsHtml(got);
   $('doneScore').setAttribute('aria-label', `${got} of 3 stars`);
   if (solved && got > 0) celebrate(got);
-  $('doneTests').textContent = `${S.strokes} ${S.strokes === 1 ? 'test' : 'tests'}${S.level >= 2 ? ` · ${LEVEL_NAMES[S.level]} day` : ''}`;
+  $('doneTests').textContent = `${S.strokes} ${S.strokes === 1 ? 'test' : 'tests'} · ${LEVEL_NAMES[S.level]} · ${domain().name}`;
   const crowd = crowdLine(S.stats);
   $('doneCrowd').innerHTML = crowd;
   $('doneCrowd').hidden = !crowd;
@@ -447,11 +490,36 @@ function renderResult() {
   if (br.falseOut != null) chips.push(`<span class="breaker in">${tokenNode(br.falseOut).outerHTML}<small>in</small></span>`);
   $('doneTrap').innerHTML = rev.trapName ? `Looks like <b>${rev.trapName}</b> at first. ${chips.length > 1 ? 'These break it.' : 'This breaks it.'}` : '';
   $('doneBreakers').innerHTML = chips.join('');
+  renderNextUp();
   $('shareText').textContent = sortShare();
   const selEl = $('practiceKind');
   if (!selEl.options.length) for (const d of D.list) { const o = document.createElement('option'); o.value = d.id; o.textContent = d.name; selEl.appendChild(o); }
   selEl.value = S.domainId;
   say($('resultFeedback'), '');
+}
+/* After a daily puzzle: point at the next unfinished one, or sum up the day. */
+function renderNextUp() {
+  const box = $('nextUp');
+  if (S.mode !== 'daily') { box.hidden = true; box.innerHTML = ''; return; }
+  const slots = daySlots(S.day);
+  const next = nextSlot(S.day, S.level);
+  const done = slots.filter((x) => x.done).length;
+  const label = S.day === today ? 'Today' : `Day ${S.day + 1}`;
+  if (next) {
+    box.innerHTML = `<div><p class="eyebrow">${label} · ${done} of ${slots.length} done</p><p class="next-text">Next up: <b>${LEVEL_NAMES[next.level]}</b> · ${next.name}${next.started ? ' (in progress)' : ''}</p></div>
+      <button class="btn primary" id="btnNext" type="button" data-icon="arrow-right"><span>${next.started ? 'Continue' : 'Play'} ${LEVEL_NAMES[next.level]}</span></button>`;
+    box.className = 'next-up';
+    box.hidden = false;
+    $('btnNext').addEventListener('click', () => loadDay(S.day, next.level).catch(() => {}));
+    I.mount(box);
+  } else {
+    const total = slots.reduce((n, x) => n + x.stars, 0);
+    const solved = slots.filter((x) => x.state.result === 'solved').length;
+    box.innerHTML = `<div><p class="eyebrow">${label} complete</p><p class="next-text"><b>${total} of ${3 * slots.length} stars</b> · ${solved === slots.length ? 'all three solved' : `${solved} of ${slots.length} solved`}</p>
+      <div class="day-row">${slots.map((x) => `<span><i class="lvl l${x.level}">${LEVEL_NAMES[x.level]}</i>${starGlyphs(x.stars)}</span>`).join('')}</div></div>`;
+    box.className = 'next-up complete';
+    box.hidden = false;
+  }
 }
 function renderSort(latestItem) {
   if (S.phase === 'explore') renderExplore(latestItem);
@@ -565,7 +633,9 @@ async function report() {
 }
 
 /* ---------- local stats ---------- */
-const emptyStats = { played: 0, solved: 0, streak: 0, best: 0, lastDay: null, stars: 0, tests: 0, testsOut: 0, domains: {} };
+const emptyStats = { played: 0, solved: 0, streak: 0, best: 0, lastSolvedDay: null, stars: 0, tests: 0, testsOut: 0, domains: {}, levels: {} };
+/* A streak counts days in a row with at least one solve. It shows as 0 once a day has gone by without one. */
+const liveStreak = (st) => (st.lastSolvedDay != null && st.lastSolvedDay >= today - 1 ? st.streak : 0);
 function recordSort() {
   if (S.mode !== 'daily' || S.recorded) return;
   S.recorded = true;
@@ -576,57 +646,61 @@ function recordSort() {
   const t = tests();
   st.tests += t.length; st.testsOut += t.filter((p) => !p.in).length;
   st.stars += starsNow();
-  if (S.result === 'solved') { st.solved += 1; dd.solved += 1; }
-  if (S.day === today) {
-    if (S.result === 'solved') { st.streak = st.lastDay === today - 1 ? st.streak + 1 : 1; st.best = Math.max(st.best, st.streak); }
-    else st.streak = 0;
-    st.lastDay = today;
+  const ll = (st.levels || {})[S.level] || { played: 0, solved: 0 };
+  ll.played += 1;
+  if (S.result === 'solved') { st.solved += 1; dd.solved += 1; ll.solved += 1; }
+  if (S.day === today && S.result === 'solved' && st.lastSolvedDay !== today) {
+    st.streak = st.lastSolvedDay === today - 1 ? st.streak + 1 : 1;
+    st.best = Math.max(st.best, st.streak);
+    st.lastSolvedDay = today;
   }
   st.domains[S.domainId] = dd;
+  st.levels = { ...(st.levels || {}), [S.level]: ll };
   store.set(STATS_KEY, st);
 }
-const dayState = (d) => store.get(SORT_PREFIX + d, null);
 function renderStatsDialog() {
   const st = { ...emptyStats, ...store.get(STATS_KEY, {}) };
   const pct = st.played ? Math.round((100 * st.solved) / st.played) : 0;
   const avgStars = st.played ? (st.stars / st.played).toFixed(1) : '–';
   const fals = st.tests ? Math.round((100 * st.testsOut) / st.tests) : 0;
-  const tiles = [[st.played, 'Played'], [`${pct}%`, 'Solved'], [avgStars, 'Avg stars'], [st.streak, 'Streak'], [st.best, 'Best'], [st.tests ? `${fals}%` : '–', 'Falsifier']];
+  const tiles = [[st.played, 'Played'], [`${pct}%`, 'Solved'], [avgStars, 'Avg stars'], [liveStreak(st), 'Streak'], [st.best, 'Best'], [st.tests ? `${fals}%` : '–', 'Falsifier']];
   $('statTiles').innerHTML = tiles.map(([v, l]) => `<div class="tile-stat"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
   const cal = [];
   for (let d = today - 27; d <= today; d++) {
-    const s = d >= 0 ? dayState(d) : null;
-    const cls = !s || s.phase !== 'result' ? '' : s.result === 'solved' ? 'solved' : 'failed';
-    cal.push(`<i class="${cls}${d === today ? ' today' : ''}" title="${d >= 0 ? `Daily ${d + 1}` : ''}"></i>`);
+    const slots = d >= 0 ? daySlots(d) : [];
+    const solved = slots.filter((x) => x.state && x.state.result === 'solved').length;
+    const finished = slots.filter((x) => x.done).length;
+    const cls = solved ? `s${solved}` : finished === slots.length && slots.length ? 'failed' : '';
+    cal.push(`<i class="${cls}${d === today ? ' today' : ''}" title="${d >= 0 ? `Day ${d + 1}: ${solved} of 3 solved` : ''}"></i>`);
   }
   $('calendar').innerHTML = cal.join('');
-  $('statDomains').innerHTML = D.list.filter((d) => DAILY_DOMAINS.includes(d.id)).map((d) => {
-    const x = (st.domains || {})[d.id] || { played: 0, solved: 0 };
+  const bar = (name, x) => {
     const w = x.played ? Math.round((100 * x.solved) / x.played) : 0;
-    return `<div><span>${d.name}</span><span class="bar"><i style="width:${w}%"></i></span><b>${x.solved} / ${x.played}</b></div>`;
-  }).join('');
+    return `<div><span>${name}</span><span class="bar"><i style="width:${w}%"></i></span><b>${x.solved} / ${x.played}</b></div>`;
+  };
+  $('statDomains').innerHTML = [
+    ...LEVELS_PER_DAY.map((l) => bar(LEVEL_NAMES[l], (st.levels || {})[l] || { played: 0, solved: 0 })),
+    '<div class="gap"></div>',
+    ...D.list.filter((d) => DAILY_DOMAINS.includes(d.id)).map((d) => bar(d.name, (st.domains || {})[d.id] || { played: 0, solved: 0 })),
+  ].join('');
   const arch = [];
   for (let d = today; d >= 0; d--) {
-    const s = dayState(d);
-    const done = s && s.phase === 'result';
-    const stars = done ? starsFor({ result: s.result, strokes: s.strokes, par: s.par }) : null;
-    const status = done ? starGlyphs(stars) : (s && s.strokes ? 'in progress' : 'not played');
-    arch.push(`<button type="button" data-day="${d}" class="${S && S.mode === 'daily' && S.day === d ? 'current' : ''}"><span class="n">${d + 1}</span><span class="d">${DAY_NAMES[dateOf(d).getUTCDay()]} ${fmtDate(d)} · ${D[domainFor(d)].name}</span><span class="s ${done ? '' : 'none'}">${status}</span></button>`);
+    const slots = daySlots(d);
+    const status = slots.map((x) => `<span class="${x.done ? 'l' + x.level : 'none'}" title="${LEVEL_NAMES[x.level]} · ${x.name}">${x.done ? starGlyphs(x.stars) : x.started ? '…' : '·'}</span>`).join('');
+    arch.push(`<button type="button" data-day="${d}" class="${S && S.mode === 'daily' && S.day === d ? 'current' : ''}"><span class="n">${d + 1}</span><span class="d">${DAY_NAMES[dateOf(d).getUTCDay()]} ${fmtDate(d)} · ${slots.map((x) => x.name).join(', ')}</span><span class="s">${status}</span></button>`);
   }
   $('archive').innerHTML = arch.join('');
-  $('archive').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { $('dlgStats').close(); loadDay(Number(b.dataset.day)); }));
+  $('archive').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { const d = Number(b.dataset.day); const n = nextSlot(d); $('dlgStats').close(); loadDay(d, n ? n.level : 1).catch(() => {}); }));
 }
 
 /* ---------- below the game ---------- */
+const LEVEL_BLURB = { 1: 'One simple rule.', 2: 'Two simple rules joined by and, or, or unless. You are told which.', 3: 'Two simple rules joined. The join is yours to work out.' };
 function renderBelow() {
-  const lvlToday = levelFor(today);
-  const rows = [[1, 'One simple rule.'], [2, 'Two simple rules joined by and, or, or unless. You are told which.'], [3, 'Two simple rules joined. The join is yours to work out.']];
-  $('weekList').innerHTML = rows.map(([l, text]) => `<li class="${l === lvlToday ? 'today' : ''}"><span class="lvl l${l}">${LEVEL_NAMES[l]}</span><span>${text}</span><b>${l === lvlToday ? 'today' : ''}</b></li>`).join('');
+  $('weekList').innerHTML = daySlots(today).map((x) => `<li class="${x.done ? 'today' : ''}"><span class="lvl l${x.level}">${LEVEL_NAMES[x.level]}</span><span><b>${x.name}.</b> ${LEVEL_BLURB[x.level]}</span><b>${x.done ? starGlyphs(x.stars) : ''}</b></li>`).join('');
   if (today >= 1) {
-    Promise.all([api('/api/reveal', { mode: 'daily', day: today - 1 }), api(`/api/stats?day=${today - 1}`)]).then(([rev, st]) => {
-      $('yesterdayRule').textContent = rev.rule;
-      $('yesterdayDetail').textContent = rev.detail;
-      $('yesterdayCrowd').innerHTML = crowdLine(st.stats);
+    Promise.all(LEVELS_PER_DAY.map((l) => api('/api/reveal', { mode: 'daily', day: today - 1, level: l }))).then((revs) => {
+      const slots = dayPlan(today - 1);
+      $('yesterdayList').innerHTML = revs.map((rev, i) => `<li><span class="lvl l${slots[i].level}">${LEVEL_NAMES[slots[i].level]}</span><span><b>${rev.rule}</b><br>${rev.detail}</span><b></b></li>`).join('');
       $('yesterdayCard').hidden = false;
     }).catch(() => {});
   }
@@ -646,7 +720,7 @@ function shareImage() {
   x.fillStyle = '#f4f3ee'; x.font = '800 74px Syne, "Bricolage Grotesque", sans-serif'; x.fillText('Deductidle', 80, 170);
   x.fillStyle = v('--in') || '#46e0a3'; x.fillText('.', 80 + x.measureText('Deductidle').width, 170);
   x.fillStyle = '#9aa19d'; x.font = '500 34px "IBM Plex Sans", sans-serif';
-  x.fillText(`${S.mode === 'daily' ? `Daily ${S.day + 1}` : 'Practice'} · ${domain().name}${S.level >= 2 ? ` · ${LEVEL_NAMES[S.level]}` : ''}`, 80, 230);
+  x.fillText(`${S.mode === 'daily' ? `Day ${S.day + 1}` : 'Practice'} · ${LEVEL_NAMES[S.level]} · ${domain().name}`, 80, 230);
   const got = starsNow();
   x.font = '700 150px "Bricolage Grotesque", sans-serif';
   for (let i = 0; i < 3; i++) { x.fillStyle = i < got ? '#ffd166' : '#3a3f42'; x.fillText('★', 80 + i * 150, 460); }
@@ -663,7 +737,7 @@ function shareImage() {
   c.toBlob((blob) => {
     if (!blob) { say($('resultFeedback'), 'Could not make the image.'); return; }
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `deductidle-${S.mode === 'daily' ? S.day + 1 : 'practice'}.png`; document.body.appendChild(a); a.click(); a.remove();
+    const a = document.createElement('a'); a.href = url; a.download = `deductidle-${S.mode === 'daily' ? `${S.day + 1}-${LEVEL_NAMES[S.level].toLowerCase()}` : 'practice'}.png`; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
     say($('resultFeedback'), 'Image saved.');
   }, 'image/png');
@@ -738,19 +812,24 @@ $('btnSound').addEventListener('click', () => { soundOn = !soundOn; store.set(SO
 window.addEventListener('resize', () => { if (S && S.phase === 'explore') renderBoard(); });
 
 /* ---------- boot and day loading ---------- */
-async function loadDay(day) {
-  const meta = await api(`/api/round?day=${day}&mode=daily`);
-  const saved = store.get(SORT_PREFIX + day, null);
+async function loadDay(day, level = 1) {
+  if (!LEVELS_PER_DAY.includes(level)) level = 1;
+  const meta = await api(`/api/round?day=${day}&mode=daily&level=${level}`);
+  const saved = dayState(day, level);
+  resetGiveUp();
   if (saved && saved.seed === meta.seed && saved.domainId === meta.domainId && Array.isArray(saved.evidence)) hydrate(saved, meta);
   else { newRound(meta); save(); }
   if (S.phase === 'result' && S.mode === 'daily' && !S.stats) {
-    api(`/api/stats?day=${day}`).then((r) => { S.stats = r.stats || null; save(); if (S.phase === 'result') renderResult(); }).catch(() => {});
+    api(`/api/stats?day=${day}&level=${level}`).then((r) => { if (S.mode === 'daily' && S.day === day && S.level === level) { S.stats = r.stats || null; save(); if (S.phase === 'result') renderResult(); } }).catch(() => {});
   }
   renderSort();
+  if (day === today) renderBelow();
   const url = new URL(location.href);
   if (day === today) url.searchParams.delete('day'); else url.searchParams.set('day', String(day + 1));
+  if (level === 1) url.searchParams.delete('level'); else url.searchParams.set('level', String(level));
   history.replaceState(null, '', url);
   window.scrollTo(0, 0);
+  if (S.phase === 'explore' && domain().input === 'text' && isDesktop()) $('probeInput').focus();
 }
 
 I.mount();
@@ -760,9 +839,13 @@ renderBelow();
 /* Test hook: the round state holds no rule, only what the player can already see. */
 window.__deductidle = { state: () => S, loadDay, practice: async (domainId, level) => { const meta = await api('/api/round', { mode: 'practice', day: S.day, domainId, level }); newRound(meta); renderSort(); return S; } };
 (async () => {
-  const wanted = Number.parseInt(new URL(location.href).searchParams.get('day'), 10);
+  const params = new URL(location.href).searchParams;
+  const wanted = Number.parseInt(params.get('day'), 10);
   const day = Number.isFinite(wanted) && wanted >= 1 && wanted - 1 <= today ? wanted - 1 : today;
-  try { await loadDay(day); }
+  const wantedLevel = Number.parseInt(params.get('level'), 10);
+  const open = nextSlot(day);
+  const level = LEVELS_PER_DAY.includes(wantedLevel) ? wantedLevel : (open ? open.level : 1);
+  try { await loadDay(day, level); }
   catch {
     $('headline').textContent = 'Could not load today’s puzzle.';
     $('lede').textContent = 'Refresh to try again.';

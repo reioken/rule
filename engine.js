@@ -3,9 +3,9 @@
    1. compound rules (A and B, A or B, A unless B) built from each domain's atoms, with the join shown or hidden,
    2. "ugly" examples: of many candidate sets, the one that keeps the most wrong rules alive. */
 import { RuleDomains } from './domains.js';
-import { LAUNCH_UTC, domainFor, levelFor } from './schedule.js';
+import { LAUNCH_UTC, domainFor, LEVELS_PER_DAY } from './schedule.js';
 
-export { LAUNCH_UTC, domainFor, levelFor, dayIndex } from './schedule.js';
+export { LAUNCH_UTC, domainFor, dayIndex, LEVEL_NAMES, LEVELS_PER_DAY } from './schedule.js';
 
 export function mulberry32(seed) {
   let a = seed >>> 0;
@@ -107,8 +107,8 @@ if (!RuleDomains.__compounded) {
    1: one simple rule. 2: two rules joined, and you are told the join. 3: two rules joined, join hidden. */
 export const LEVELS = {
   1: { evidence: 6, compound: false, showJoin: false, name: 'Easy' },
-  2: { evidence: 6, compound: true, showJoin: true, name: 'Hard' },
-  3: { evidence: 6, compound: true, showJoin: false, name: 'Brutal' },
+  2: { evidence: 6, compound: true, showJoin: true, name: 'Medium' },
+  3: { evidence: 6, compound: true, showJoin: false, name: 'Hard' },
 };
 export const levelOf = (rule) => ((rule.level || 1) === 1 ? 1 : 2);
 export const evidenceCountFor = (rule, level) => LEVELS[level || levelOf(rule)].evidence;
@@ -187,17 +187,19 @@ function strideFor(len) {
   while (len > 1 && gcd(stride, len) !== 1) stride++;
   return stride;
 }
-export function dailyPick(day) {
-  const domainId = domainFor(day);
-  const level = levelFor(day);
+/* The puzzle for one slot of one day. Within a domain and a level band (simple or compound), rules
+   are dealt in a fixed stride so nothing repeats before the whole band has been used. */
+export function dailyPick(day, level = 1) {
+  level = LEVELS_PER_DAY.includes(level) ? level : 1;
+  const domainId = domainFor(day, level);
   const wantCompound = LEVELS[level].compound;
   const domain = RuleDomains[domainId];
   let subset = domain.rules.map((r, i) => ({ r, i })).filter(({ r }) => ((r.level || 1) === 2) === wantCompound);
   if (!subset.length) subset = domain.rules.map((r, i) => ({ r, i }));
-  let nth = 0; // earlier days with the same domain and the same level band
-  for (let d = 0; d < day; d++) if (domainFor(d) === domainId && LEVELS[levelFor(d)].compound === wantCompound) nth++;
+  let nth = 0; // earlier puzzles with the same domain and the same level band
+  for (let d = 0; d < day; d++) for (const l of LEVELS_PER_DAY) if (domainFor(d, l) === domainId && LEVELS[l].compound === wantCompound) nth++;
   const pick = subset[(nth * strideFor(subset.length)) % subset.length];
-  return { domainId, ruleIdx: pick.i, seed: day * 1000 + 17, level };
+  return { domainId, ruleIdx: pick.i, seed: day * 1000 + 17 + (level - 1) * 331, level };
 }
 
 export const RuleEngine = { mulberry32, buildEvidence, buildProve, trapBreakers, dailyPick, LAUNCH_UTC };
