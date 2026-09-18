@@ -53,6 +53,7 @@ function publicMeta(round) {
     level: round.level,
     levelName: E.LEVELS[round.level].name,
     par: rule.par,
+    ...(rule.level === 2 ? { joined: rule.word } : {}),
     evidence,
     ...(round.mode === 'practice' ? { ruleIdx: round.ruleIdx } : {}),
   };
@@ -81,7 +82,11 @@ function proveItems(round, tested, proveRound) {
 
 function revealPayload(round) {
   const { falseIn, falseOut } = E.trapBreakers(round.domain, round.rule);
-  return { rule: round.rule.rule, detail: round.rule.detail, trapName: round.rule.trapName, breakers: { falseIn, falseOut } };
+  const r = round.rule;
+  return {
+    rule: r.rule, detail: r.detail, trapName: r.trapName, breakers: { falseIn, falseOut },
+    ...(r.level === 2 ? { joined: r.word, parts: r.parts } : {}),
+  };
 }
 
 /* ================= solve rates ================= */

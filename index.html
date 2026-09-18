@@ -51,9 +51,10 @@
       <div class="play-dock"><div class="dock-card">
         <div class="status-row" id="statusRow">
           <p id="testCount"><span class="pill">Tests 0</span></p>
-          <p id="alive" class="alive" title="Rules from the library that still fit everything on the board"></p>
+          <button type="button" id="alive" class="alive" aria-describedby="aliveNote"></button>
           <p id="starStatus"></p>
         </div>
+        <p class="alive-note" id="aliveNote" hidden>We keep a library of every rule the game can use. This counts the ones that still match every example and every test on the board. The real rule is always one of them, so <b>1</b> means you have it pinned down.</p>
 
         <div class="coach" id="coach" hidden>
           <p id="coachText"></p>
@@ -92,6 +93,7 @@
           <p class="eyebrow">The rule</p>
           <h3 id="doneRule"></h3>
           <p id="doneDetail"></p>
+          <div class="parts" id="doneParts" hidden></div>
         </div>
         <div class="rule-block trap">
           <p class="eyebrow">The trap</p>
@@ -149,7 +151,8 @@
     <h2>Find the rule</h2>
     <p>A few things are already sorted through the gate by a secret rule. Send your own through to work it out. Every test costs one.</p>
     <p>When you know it, sort six new things to prove it. Every one has to be right.</p>
-    <p>Monday and Wednesday are one rule. The rest of the week joins two rules together, and weekends give you only four examples to start from.</p>
+    <p><b>Hard days</b> join two simple rules with <b>and</b>, <b>or</b> or <b>unless</b>. The joining word is shown, the two parts are not. <b>Brutal</b> days do the same with only four examples.</p>
+    <p><b>Rules still fit</b> counts the rules in our library that match everything on the board. The real one is always among them. Get it to 1.</p>
     <p>The obvious answer is usually a trap. Test things you expect to fail.</p>
     <form method="dialog"><button class="btn primary" id="btnHelpClose" type="submit">Close</button></form>
   </dialog>

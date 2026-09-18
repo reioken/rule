@@ -144,7 +144,7 @@ function roundBody() {
 function newRound(meta) {
   S = {
     mode: meta.mode, day: meta.day, domainId: meta.domainId, ruleIdx: meta.ruleIdx, seed: meta.seed,
-    level: meta.level, par: meta.par, evidence: meta.evidence, alive: meta.alive,
+    level: meta.level, par: meta.par, evidence: meta.evidence, alive: meta.alive, joined: meta.joined || null,
     phase: 'explore', strokes: 0, log: [], proveRound: 0, proveFails: 0, proveItems: [], proveAnswers: {},
     result: null, recorded: false, reveal: null, stats: null, reported: false,
   };
@@ -154,7 +154,7 @@ const save = () => { if (S.mode === 'daily') store.set(SORT_PREFIX + S.day, S); 
 function hydrate(saved, meta) {
   S = saved;
   S.phase = normalizePhase(S.phase);
-  S.par = meta.par; S.evidence = meta.evidence; S.level = meta.level;
+  S.par = meta.par; S.evidence = meta.evidence; S.level = meta.level; S.joined = meta.joined || null;
   if (S.alive === undefined) S.alive = meta.alive;
   S.proveItems = Array.isArray(S.proveItems) ? S.proveItems : [];
   S.proveAnswers = S.proveAnswers && typeof S.proveAnswers === 'object' ? S.proveAnswers : {};
@@ -184,7 +184,9 @@ function renderPhaseHead() {
   $('meta').innerHTML = sortMeta();
   if (S.phase === 'explore') {
     $('headline').textContent = 'What’s the rule?';
-    $('lede').textContent = `${evidenceLede(S.evidence.length)} ${S.level >= 2 ? 'Today it joins two conditions.' : 'Test anything when you have a theory.'}`;
+    if (S.joined) {
+      $('lede').innerHTML = `${evidenceLede(S.evidence.length)} Today it is <b>two simple rules</b> joined by <span class="joiner">${S.joined}</span>${S.evidence.length <= 4 ? ', and you get only four examples' : ''}.`;
+    } else $('lede').textContent = `${evidenceLede(S.evidence.length)} Test anything when you have a theory.`;
   } else if (S.phase === 'prove') {
     $('headline').textContent = 'Sort all six.';
     $('lede').textContent = 'Every one has to be right.';
@@ -195,9 +197,10 @@ function renderStatus(bump = false) {
   const possible = S.phase === 'result' ? starsNow() : starsStillPossible(S.strokes, S.par);
   $('testCount').innerHTML = `<span class="pill">Tests ${S.strokes}</span>`;
   $('starStatus').innerHTML = `<span class="vh">${possible} star${possible === 1 ? '' : 's'} still possible</span><span class="stars" aria-hidden="true">${'★'.repeat(possible)}<span class="dim">${'★'.repeat(3 - possible)}</span></span> <span aria-hidden="true">possible</span>`;
-  const n = (S.alive ?? 0) + 1;
-  $('alive').innerHTML = `<b class="${bump ? 'bump' : ''}">${n}</b> ${n === 1 ? 'rule fits' : 'rules fit'}`;
+  const n = Math.max(1, S.alive ?? 1);
+  $('alive').innerHTML = `<b class="${bump ? 'bump' : ''}">${n}</b> ${n === 1 ? 'rule still fits' : 'rules still fit'}`;
   $('alive').hidden = S.phase !== 'explore';
+  if (S.phase !== 'explore') $('aliveNote').hidden = true;
   $('statusRow').hidden = S.phase === 'result';
 }
 function renderBoard(latestItem) {
@@ -235,7 +238,7 @@ function renderCoach() {
     box.hidden = false;
   } else if (n >= 1) {
     store.set(COACH_KEY, 1);
-    $('coachText').innerHTML = 'The obvious rule is usually a trap. <b>Test something you expect to be out.</b> When you’re sure, prove it.';
+    $('coachText').innerHTML = 'The obvious rule is usually a trap. <b>Test something you expect to be out.</b> The counter above shows how many rules from our library still match the board. Get it low, then prove it.';
     box.hidden = false;
   } else box.hidden = true;
 }
@@ -407,7 +410,7 @@ function renderResult() {
   $('meta').innerHTML = sortMeta();
   $('exploreBoard').hidden = true; $('proveBoard').hidden = true;
   $('testPanel').hidden = true; $('proveActions').hidden = true; $('resultPanel').hidden = false;
-  $('statusRow').hidden = true; $('coach').hidden = true;
+  $('statusRow').hidden = true; $('coach').hidden = true; $('aliveNote').hidden = true;
   const solved = S.result === 'solved';
   const got = starsNow();
   $('doneHeadline').textContent = solved ? 'You found the rule.' : 'The rule';
@@ -421,6 +424,13 @@ function renderResult() {
   const rev = S.reveal || {};
   $('doneRule').textContent = rev.rule || '';
   $('doneDetail').textContent = rev.detail || '';
+  const parts = $('doneParts');
+  if (rev.parts && rev.parts.length === 2) {
+    parts.hidden = false;
+    parts.innerHTML = `<div class="part"><span class="eyebrow">Part one</span><h4>${rev.parts[0].rule}</h4><p>${rev.parts[0].detail}</p></div>
+      <div class="joiner-chip">${rev.joined}</div>
+      <div class="part"><span class="eyebrow">Part two</span><h4>${rev.parts[1].rule}</h4><p>${rev.parts[1].detail}</p></div>`;
+  } else { parts.hidden = true; parts.innerHTML = ''; }
   const br = rev.breakers || {};
   const chips = [];
   if (br.falseIn != null) chips.push(`<span class="breaker out">${tokenNode(br.falseIn).outerHTML}<small>out</small></span>`);
@@ -701,6 +711,10 @@ $('btnBack').addEventListener('click', () => { S.phase = 'explore'; save(); rend
 $('btnCheck').addEventListener('click', checkProve);
 $('btnGiveUp').addEventListener('click', doGiveUp);
 $('btnCoachClose').addEventListener('click', () => { store.set(COACH_KEY, 2); $('coach').hidden = true; });
+$('alive').addEventListener('click', () => {
+  const note = $('aliveNote');
+  note.hidden = !note.hidden;
+});
 $('btnShare').addEventListener('click', () => copyText(sortShare(), $('resultFeedback')));
 $('btnImage').addEventListener('click', shareImage);
 $('btnPractice').addEventListener('click', async () => {

@@ -26,10 +26,11 @@ const pool = (domain, rule, rng) => shuffle(domain.pool(rule.range), rng);
 
 /* ---------- compound rules ---------- */
 const lower = (s) => s.charAt(0).toLowerCase() + s.slice(1);
+/* How two simple rules combine. `word` is what the player sees between the two parts. */
 const OPS = {
-  and: { join: (a, b) => `${a}, and ${lower(b)}`, test: (a, b) => (x) => a(x) && b(x), glue: 'And also:' },
-  or: { join: (a, b) => `${a}, or ${lower(b)}`, test: (a, b) => (x) => a(x) || b(x), glue: 'Or, on its own:' },
-  except: { join: (a, b) => `${a}, except ${lower(b)}`, test: (a, b) => (x) => a(x) && !b(x), glue: 'Unless:' },
+  and: { word: 'and', join: (a, b) => `${a}, and ${lower(b)}`, test: (a, b) => (x) => a(x) && b(x), how: 'Both parts have to be true.' },
+  or: { word: 'or', join: (a, b) => `${a}, or ${lower(b)}`, test: (a, b) => (x) => a(x) || b(x), how: 'Either part on its own is enough.' },
+  except: { word: 'unless', join: (a, b) => `${a}, unless ${lower(b)}`, test: (a, b) => (x) => a(x) && !b(x), how: 'The first part has to be true and the second part has to be false.' },
 };
 const MAX_COMPOUNDS = 36;
 const MAX_PER_ATOM = 7;
@@ -61,6 +62,9 @@ function buildCompounds(domain) {
       const splits = splitIn + splitOut;
       /* enough of everything for six opening examples plus three prove rounds */
       if (inN < 12 || n - inN < 12 || agreeIn < 9 || agreeOut < 9 || splits < Math.max(12, n * 0.08) || diffB < n * 0.08) continue;
+      /* a compound that is just another atom in disguise (a club or a spade = a black suit) is not a compound */
+      const twin = atoms.some((c) => { let d = 0; for (const x of items) if (test(x) !== c.test(x)) { d++; if (d > n * 0.04) break; } return d <= n * 0.04; });
+      if (twin) continue;
       candidates.push({ a, b, op, spec, range, score: Math.min(splits, n * 0.4) / n + Math.min(frac, 1 - frac) });
     }
   }
@@ -76,8 +80,11 @@ function buildCompounds(domain) {
     out.push({
       id: `${a.id}${op === 'and' ? '+' : op === 'or' ? '|' : '-'}${b.id}`,
       level: 2,
+      op,
+      word: spec.word,
       rule: spec.join(a.rule, b.rule),
-      detail: `${a.detail} ${spec.glue} ${lower(b.detail)}`,
+      detail: spec.how,
+      parts: [{ rule: a.rule, detail: a.detail }, { rule: b.rule, detail: b.detail }],
       test: spec.test(a.test, b.test),
       trap: a.test,
       trapName: lower(a.rule),
@@ -106,12 +113,13 @@ export const levelOf = (rule) => ((rule.level || 1) === 1 ? 1 : 2);
 export const evidenceCountFor = (rule, level) => LEVELS[level || levelOf(rule)].evidence;
 
 /* ---------- evidence ---------- */
-/* The hypotheses a player might believe: every atom of the domain, and its negation. */
+/* The hypotheses a player might believe: every rule in the domain's library, atoms and compounds,
+   plus each atom's opposite. Used to pick ugly examples and to count how many rules still fit. */
 function hypotheses(domain, rule) {
   const hs = [];
   for (const r of domain.rules) {
-    if ((r.level || 1) !== 1) continue;
-    hs.push(r.test, (x) => !r.test(x));
+    hs.push(r.test);
+    if ((r.level || 1) === 1) hs.push((x) => !r.test(x));
   }
   return hs.filter((h) => h !== rule.test);
 }
@@ -138,9 +146,9 @@ export function buildEvidence(domain, rule, rng, n = 6) {
   return shuffle(best || [], rng);
 }
 
-/* How many wrong hypotheses are still consistent with everything on the board. */
+/* How many library rules still fit everything on the board, the real one included. Never below 1. */
 export function aliveHypotheses(domain, rule, evidence) {
-  return hypotheses(domain, rule).filter((h) => consistent(h, evidence)).length;
+  return 1 + hypotheses(domain, rule).filter((h) => consistent(h, evidence)).length;
 }
 
 /* Six items to prove yourself on: four disagree with the trap where the pool allows (never fewer than

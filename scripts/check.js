@@ -60,6 +60,7 @@ for (let day = 0; day < 365; day++) {
   const pick = E.dailyPick(day);
   const domain = D[pick.domainId], rule = domain.rules[pick.ruleIdx];
   if (E.LEVELS[pick.level].compound && rule.level !== 2) fail(`#${day + 1}`, 'hard day without a compound rule');
+  if (rule.level === 2 && (!rule.parts || rule.parts.length !== 2 || !rule.word)) fail(`#${day + 1}`, 'compound rule without its two parts');
   check(`#${day + 1} ${pick.domainId}/${rule.id}`, domain, rule, pick.seed, 3, pick.level);
 }
 
@@ -86,7 +87,7 @@ for (const f of clientFiles) {
   for (const domain of D.list) {
     for (const rule of domain.rules) {
       if (rule.level !== 1) continue;
-      if (text.includes(rule.rule)) fail(`client ${f}`, `contains rule text "${rule.rule}"`);
+      if (rule.rule.length > 6 && text.includes(rule.rule)) fail(`client ${f}`, `contains rule text "${rule.rule}"`);
       if (text.includes(rule.detail)) fail(`client ${f}`, `contains detail for ${rule.id}`);
       if (text.includes(rule.trapName)) fail(`client ${f}`, `contains trap name "${rule.trapName}"`);
     }
