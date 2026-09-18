@@ -1,6 +1,10 @@
-/* Deductidle — generic round generator. Works on any domain's pool + rule. Server-only. */
+/* Deductidle — generic round generator. Works on any domain's pool + rule. Server-only.
+   Difficulty comes from three places:
+   1. compound rules (A and B, A or B, A except B) built from each domain's atoms,
+   2. fewer opening examples (6 on most days, 4 on weekends),
+   3. "ugly" examples: of many candidate sets, the one that keeps the most wrong rules alive. */
 import { RuleDomains } from './domains.js';
-import { LAUNCH_UTC, domainFor } from './schedule.js';
+import { LAUNCH_UTC, domainFor, LEVEL_FOR } from './schedule.js';
 
 export { LAUNCH_UTC, domainFor, dayIndex } from './schedule.js';
 
@@ -14,18 +18,129 @@ export function mulberry32(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-function shuffle(list, rng) {
+export function shuffle(list, rng) {
   for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [list[i], list[j]] = [list[j], list[i]]; }
   return list;
 }
 const pool = (domain, rule, rng) => shuffle(domain.pool(rule.range), rng);
 
-/* Eight opening examples on which the real rule and the trap agree. */
-export function buildEvidence(domain, rule, rng) {
+/* ---------- compound rules ---------- */
+const lower = (s) => s.charAt(0).toLowerCase() + s.slice(1);
+const OPS = {
+  and: { join: (a, b) => `${a}, and ${lower(b)}`, test: (a, b) => (x) => a(x) && b(x), glue: 'And also:' },
+  or: { join: (a, b) => `${a}, or ${lower(b)}`, test: (a, b) => (x) => a(x) || b(x), glue: 'Or, on its own:' },
+  except: { join: (a, b) => `${a}, except ${lower(b)}`, test: (a, b) => (x) => a(x) && !b(x), glue: 'Unless:' },
+};
+const MAX_COMPOUNDS = 36;
+const MAX_PER_ATOM = 7;
+
+function buildCompounds(domain) {
+  const atoms = domain.rules.filter((r) => (r.level || 1) === 1);
+  const candidates = [];
+  for (const a of atoms) for (const b of atoms) {
+    if (a === b) continue;
+    const range = a.range && b.range ? (a.range[1] - a.range[0] <= b.range[1] - b.range[0] ? a.range : b.range) : (a.range || b.range);
+    const items = domain.pool(range);
+    const n = items.length;
+    for (const [op, spec] of Object.entries(OPS)) {
+      if (op !== 'except' && a.id > b.id) continue; // and/or are symmetric: keep one ordering
+      const test = spec.test(a.test, b.test);
+      const trap = a.test;
+      let inN = 0, agreeIn = 0, agreeOut = 0, splitIn = 0, splitOut = 0, diffB = 0;
+      for (const x of items) {
+        const t = test(x), tr = trap(x), bb = b.test(x);
+        if (t) inN++;
+        if (t && tr) agreeIn++;
+        if (!t && !tr) agreeOut++;
+        if (t && !tr) splitIn++;
+        if (!t && tr) splitOut++;
+        if (t !== bb) diffB++;
+      }
+      const frac = inN / n;
+      if (frac < 0.12 || frac > 0.62) continue;
+      const splits = splitIn + splitOut;
+      /* enough of everything for six opening examples plus three prove rounds */
+      if (inN < 12 || n - inN < 12 || agreeIn < 9 || agreeOut < 9 || splits < Math.max(12, n * 0.08) || diffB < n * 0.08) continue;
+      candidates.push({ a, b, op, spec, range, score: Math.min(splits, n * 0.4) / n + Math.min(frac, 1 - frac) });
+    }
+  }
+  candidates.sort((x, y) => y.score - x.score || x.a.id.localeCompare(y.a.id) || x.b.id.localeCompare(y.b.id) || x.op.localeCompare(y.op));
+  const used = {};
+  const out = [];
+  for (const c of candidates) {
+    if (out.length >= MAX_COMPOUNDS) break;
+    if ((used[c.a.id] || 0) >= MAX_PER_ATOM || (used[c.b.id] || 0) >= MAX_PER_ATOM) continue;
+    used[c.a.id] = (used[c.a.id] || 0) + 1;
+    used[c.b.id] = (used[c.b.id] || 0) + 1;
+    const { a, b, op, spec } = c;
+    out.push({
+      id: `${a.id}${op === 'and' ? '+' : op === 'or' ? '|' : '-'}${b.id}`,
+      level: 2,
+      rule: spec.join(a.rule, b.rule),
+      detail: `${a.detail} ${spec.glue} ${lower(b.detail)}`,
+      test: spec.test(a.test, b.test),
+      trap: a.test,
+      trapName: lower(a.rule),
+      par: Math.max(a.par, b.par) + 2,
+      ...(c.range ? { range: c.range } : {}),
+    });
+  }
+  return out;
+}
+
+if (!RuleDomains.__compounded) {
+  for (const domain of RuleDomains.list) {
+    for (const r of domain.rules) r.level = r.level || 1;
+    domain.rules = [...domain.rules, ...buildCompounds(domain)];
+  }
+  RuleDomains.__compounded = true;
+}
+
+/* ---------- levels ---------- */
+export const LEVELS = {
+  1: { evidence: 6, compound: false, name: 'Easy' },
+  2: { evidence: 6, compound: true, name: 'Hard' },
+  3: { evidence: 4, compound: true, name: 'Brutal' },
+};
+export const levelOf = (rule) => ((rule.level || 1) === 1 ? 1 : 2);
+export const evidenceCountFor = (rule, level) => LEVELS[level || levelOf(rule)].evidence;
+
+/* ---------- evidence ---------- */
+/* The hypotheses a player might believe: every atom of the domain, and its negation. */
+function hypotheses(domain, rule) {
+  const hs = [];
+  for (const r of domain.rules) {
+    if ((r.level || 1) !== 1) continue;
+    hs.push(r.test, (x) => !r.test(x));
+  }
+  return hs.filter((h) => h !== rule.test);
+}
+const consistent = (h, evidence) => evidence.every((e) => h(e.item) === e.in);
+
+/* n opening examples, half In and half Out, on which the real rule and the trap agree.
+   Of many candidate sets, keep the one that leaves the most wrong hypotheses alive. */
+export function buildEvidence(domain, rule, rng, n = 6) {
   const list = pool(domain, rule, rng);
-  const agreeIn = list.filter((x) => rule.test(x) && rule.trap(x)).slice(0, 4);
-  const agreeOut = list.filter((x) => !rule.test(x) && !rule.trap(x)).slice(0, 4);
-  return shuffle([...agreeIn.map((x) => ({ item: x, in: true })), ...agreeOut.map((x) => ({ item: x, in: false }))], rng);
+  const half = Math.max(1, Math.floor(n / 2));
+  const agreeIn = list.filter((x) => rule.test(x) && rule.trap(x));
+  const agreeOut = list.filter((x) => !rule.test(x) && !rule.trap(x));
+  const hs = hypotheses(domain, rule);
+  const tries = 40;
+  let best = null, bestScore = -1;
+  for (let t = 0; t < tries; t++) {
+    const ins = shuffle(agreeIn.slice(0, 40), rng).slice(0, half);
+    const outs = shuffle(agreeOut.slice(0, 40), rng).slice(0, half);
+    const ev = [...ins.map((x) => ({ item: x, in: true })), ...outs.map((x) => ({ item: x, in: false }))];
+    if (ev.length < 2 * half) continue;
+    const score = hs.reduce((acc, h) => acc + (consistent(h, ev) ? 1 : 0), 0);
+    if (score > bestScore) { bestScore = score; best = ev; }
+  }
+  return shuffle(best || [], rng);
+}
+
+/* How many wrong hypotheses are still consistent with everything on the board. */
+export function aliveHypotheses(domain, rule, evidence) {
+  return hypotheses(domain, rule).filter((h) => consistent(h, evidence)).length;
 }
 
 /* Six items to prove yourself on: four disagree with the trap where the pool allows (never fewer than
@@ -35,10 +150,10 @@ export function buildProve(domain, rule, used, rng) {
   const group = (isIn, splits) => list.filter((x) => rule.test(x) === isIn && (rule.test(x) !== rule.trap(x)) === splits);
   const dIn = group(true, true), dOut = group(false, true), aIn = group(true, false), aOut = group(false, false);
   const picks = [], take = (src) => (src.length ? (picks.push(src.shift()), true) : false);
-  for (let i = 0; i < 2; i++) { take(dIn); take(dOut); }                 // two per direction before a third
+  for (let i = 0; i < 2; i++) { take(dIn); take(dOut); }
   while (picks.length < 4 && take(dIn.length >= dOut.length ? dIn : dOut));
   while (picks.length < 6) {
-    const inN = picks.filter((x) => rule.test(x)).length;                // top up whichever answer is behind
+    const inN = picks.filter((x) => rule.test(x)).length;
     if (!(inN * 2 <= picks.length ? [aIn, dIn, aOut, dOut] : [aOut, dOut, aIn, dIn]).some(take)) break;
   }
   return shuffle(picks.slice(0, 6), rng).map((x) => ({ item: x, in: rule.test(x) }));
@@ -56,16 +171,27 @@ export function trapBreakers(domain, rule) {
   return { falseIn, falseOut };
 }
 
+/* ---------- schedule ---------- */
+const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+function strideFor(len) {
+  let stride = 3;
+  while (len > 1 && gcd(stride, len) !== 1) stride++;
+  return stride;
+}
+export function levelFor(day) {
+  return LEVEL_FOR[new Date(LAUNCH_UTC + day * 86400000).getUTCDay()] || 1;
+}
 export function dailyPick(day) {
   const domainId = domainFor(day);
-  const rules = RuleDomains[domainId].rules;
-  let nth = 0; // how many earlier days used this domain
-  for (let d = 0; d < day; d++) if (domainFor(d) === domainId) nth++;
-  const gcd = (a, b) => (b ? gcd(b, a % b) : a);
-  let stride = 3; // smallest stride from 3 up that is coprime with the library size, so every rule gets a turn
-  while (gcd(stride, rules.length) !== 1) stride++;
-  const ruleIdx = (nth * stride) % rules.length;
-  return { domainId, ruleIdx, seed: day * 1000 + 17 };
+  const level = levelFor(day);
+  const wantCompound = LEVELS[level].compound;
+  const domain = RuleDomains[domainId];
+  let subset = domain.rules.map((r, i) => ({ r, i })).filter(({ r }) => ((r.level || 1) === 2) === wantCompound);
+  if (!subset.length) subset = domain.rules.map((r, i) => ({ r, i }));
+  let nth = 0; // earlier days with the same domain and the same level band
+  for (let d = 0; d < day; d++) if (domainFor(d) === domainId && LEVELS[levelFor(d)].compound === wantCompound) nth++;
+  const pick = subset[(nth * strideFor(subset.length)) % subset.length];
+  return { domainId, ruleIdx: pick.i, seed: day * 1000 + 17, level };
 }
 
 export const RuleEngine = { mulberry32, buildEvidence, buildProve, trapBreakers, dailyPick, LAUNCH_UTC };

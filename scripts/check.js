@@ -6,8 +6,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { RuleDomains as D } from '../domains.js';
 import * as E from '../engine.js';
+import * as B from '../box.js';
 import { handleApi } from '../api.js';
-import { WEEK } from '../schedule.js';
+import { WEEK, BOX_WEEK, LEVEL_FOR } from '../schedule.js';
 import {
   starsFor, starsStillPossible, shareText, alreadyOnBoard, proveReady,
   needAnotherLook, normalizePhase,
@@ -20,14 +21,16 @@ const fail = (who, msg) => { bad++; console.log(`${who}: ${msg}`); };
 
 /* rounds > 1 replays consecutive prove rounds the way game.js does after a failed prove:
    round r draws from seed + 7919 * (r + 1), and every earlier prove item is already on the board. */
-function check(who, domain, rule, seed, rounds = 1) {
+function check(who, domain, rule, seed, rounds = 1, level = E.levelOf(rule)) {
   boards++;
-  const evidence = E.buildEvidence(domain, rule, E.mulberry32(seed));
+  const want = E.evidenceCountFor(rule, level);
+  const evidence = E.buildEvidence(domain, rule, E.mulberry32(seed), want);
   const used = new Set(evidence.map((e) => e.item));
   const evIn = evidence.filter((e) => e.in).length;
-  if (evidence.length !== 8) fail(who, `evidence has ${evidence.length} items, want 8`);
-  if (evIn !== 4) fail(who, `evidence is ${evIn} In / ${evidence.length - evIn} Out, want 4/4`);
+  if (evidence.length !== want) fail(who, `evidence has ${evidence.length} items, want ${want}`);
+  if (evIn * 2 !== want) fail(who, `evidence is ${evIn} In / ${evidence.length - evIn} Out, want ${want / 2}/${want / 2}`);
   if (used.size !== evidence.length) fail(who, 'evidence repeats an item');
+  if (evidence.some((e) => rule.trap(e.item) !== e.in)) fail(who, 'the trap does not fit the opening examples');
   for (let r = 0; r < rounds; r++) {
     const at = rounds > 1 ? `${who} prove round ${r + 1}` : who;
     const prove = E.buildProve(domain, rule, used, E.mulberry32(seed + 7919 * (r + 1)));
@@ -44,25 +47,65 @@ function check(who, domain, rule, seed, rounds = 1) {
 
 for (const domain of D.list) {
   for (const rule of domain.rules) {
-    for (let s = 0; s < 60; s++) check(`${domain.id}/${rule.id} seed ${s * 1000 + 17}`, domain, rule, s * 1000 + 17);
+    const seeds = rule.level === 2 ? 12 : 40;
+    for (let s = 0; s < seeds; s++) {
+      check(`${domain.id}/${rule.id} seed ${s * 1000 + 17}`, domain, rule, s * 1000 + 17);
+      if (rule.level === 2) check(`${domain.id}/${rule.id} L3 seed ${s * 1000 + 17}`, domain, rule, s * 1000 + 17, 1, 3);
+    }
   }
+  const atoms = domain.rules.filter((r) => r.level === 1).length;
+  const hardDays = Object.entries(WEEK).some(([wd, id]) => id === domain.id && E.LEVELS[LEVEL_FOR[wd]].compound);
+  if (hardDays && domain.rules.length - atoms < 6) fail(`compounds ${domain.id}`, `only ${domain.rules.length - atoms} compound rules`);
 }
 for (let day = 0; day < 365; day++) {
   const pick = E.dailyPick(day);
   const domain = D[pick.domainId], rule = domain.rules[pick.ruleIdx];
-  check(`#${day + 1} ${pick.domainId}/${rule.id}`, domain, rule, pick.seed, 3);
+  if (E.LEVELS[pick.level].compound && rule.level !== 2) fail(`#${day + 1}`, 'hard day without a compound rule');
+  check(`#${day + 1} ${pick.domainId}/${rule.id}`, domain, rule, pick.seed, 3, pick.level);
 }
 
-/* Every daily-scheduled domain must use each of its rules within 30 weeks.
-   Practice-only domains (letters, colors) are skipped here. */
-const seen = {};
+/* Within each domain and level band, no rule repeats before the whole band has been used. */
 const scheduled = new Set(Object.values(WEEK));
-for (let day = 0; day < 7 * 30; day++) { const p = E.dailyPick(day); (seen[p.domainId] ||= new Set()).add(p.ruleIdx); }
 for (const domain of D.list) {
   if (!scheduled.has(domain.id)) continue;
-  const missed = domain.rules.filter((_, i) => !(seen[domain.id] || new Set()).has(i)).map((r) => r.id);
-  if (missed.length) fail(`schedule ${domain.id}`, `never scheduled in 30 weeks: ${missed.join(', ')}`);
+  for (const compound of [false, true]) {
+    const band = domain.rules.map((r, i) => ({ r, i })).filter(({ r }) => (r.level === 2) === compound).map(({ i }) => i);
+    const seq = [];
+    for (let day = 0; day < 7 * 60 && seq.length < band.length; day++) {
+      const p = E.dailyPick(day);
+      if (p.domainId === domain.id && E.LEVELS[p.level].compound === compound) seq.push(p.ruleIdx);
+    }
+    if (seq.length && new Set(seq).size !== seq.length) fail(`schedule ${domain.id}`, `${compound ? 'compound' : 'atom'} rules repeat before the band is used up`);
+  }
 }
+
+/* Black Box: every function over many seeds and the first 365 days. */
+function checkBox(who, domain, fn, seed, rounds = 1) {
+  boards++;
+  const rng = B.mulberry32(seed);
+  const { given } = B.buildGiven(domain, fn, rng);
+  if (given.length !== 3) fail(who, `given has ${given.length} pairs, want 3`);
+  const used = new Set(given.map((g) => g.input));
+  if (used.size !== 3) fail(who, 'given repeats an input');
+  for (const g of given) if (!B.sameOut(B.run(domain, fn, g.input), g.output)) fail(who, 'given output disagrees with the function');
+  for (let r = 0; r < rounds; r++) {
+    const prove = B.buildProve(domain, fn, used, B.mulberry32(seed + 7919 * (r + 1)));
+    if (prove.length !== 4) fail(who, `prove has ${prove.length} inputs, want 4`);
+    if (prove.some((p) => used.has(p.input))) fail(who, 'prove reuses an input');
+    const others = domain.funcs.filter((g) => g !== fn);
+    const fooled = others.filter((g) => prove.every((p) => B.sameOut(B.run(domain, g, p.input), p.output)));
+    if (fooled.length) fail(who, `another function passes prove: ${fooled.map((g) => g.id).join(', ')}`);
+    for (const p of prove) used.add(p.input);
+  }
+}
+for (const domain of B.BoxDomains.list) {
+  for (const fn of domain.funcs) for (let s = 0; s < 30; s++) checkBox(`box ${domain.id}/${fn.id} seed ${s * 1000 + 313}`, domain, fn, s * 1000 + 313);
+}
+for (let day = 0; day < 365; day++) {
+  const p = B.dailyBox(day);
+  checkBox(`box #${day + 1} ${p.domainId}`, B.BoxDomains[p.domainId], B.BoxDomains[p.domainId].funcs[p.fnIdx], p.seed, 3);
+}
+if (new Set(Object.values(BOX_WEEK)).size !== 2) fail('box schedule', 'expected two box domains in the week');
 
 /* Client-facing files must not ship rule predicates or reveal copy. */
 const clientFiles = ['catalog.js', 'game.js', 'schedule.js', 'icons.js', 'index.html', 'logic.js'];
@@ -70,12 +113,16 @@ for (const f of clientFiles) {
   const text = readFileSync(join(root, f), 'utf8');
   for (const domain of D.list) {
     for (const rule of domain.rules) {
+      if (rule.level !== 1) continue;
       if (text.includes(rule.rule)) fail(`client ${f}`, `contains rule text "${rule.rule}"`);
       if (text.includes(rule.detail)) fail(`client ${f}`, `contains detail for ${rule.id}`);
       if (text.includes(rule.trapName)) fail(`client ${f}`, `contains trap name "${rule.trapName}"`);
     }
   }
-  if (/from ['"]\.\/(?:domains|words|engine|api)\.js['"]/.test(text)) fail(`client ${f}`, 'imports server-only modules');
+  for (const domain of B.BoxDomains.list) for (const fn of domain.funcs) {
+    if (text.includes(fn.name)) fail(`client ${f}`, `contains box function name "${fn.name}"`);
+  }
+  if (/from ['"]\.\/(?:domains|words|engine|api|box)\.js['"]/.test(text)) fail(`client ${f}`, 'imports server-only modules');
 }
 
 async function call(path, body, method) {
@@ -89,7 +136,7 @@ async function call(path, body, method) {
 
 const daily = await (await call('/api/round?day=0&mode=daily')).json();
 if (daily.domainId !== 'numbers') fail('api daily', `day 0 domain is ${daily.domainId}, want numbers`);
-if (!daily.evidence || daily.evidence.length !== 8) fail('api daily', 'day 0 did not return 8 evidence items');
+if (!daily.evidence || daily.evidence.length !== E.LEVELS[daily.level].evidence) fail('api daily', 'day 0 evidence count does not match its level');
 if (daily.rule || daily.detail || daily.trapName || daily.ruleIdx != null) fail('api daily', 'daily round leaked the rule');
 if (typeof daily.par !== 'number') fail('api daily', 'daily round missing par');
 
@@ -125,6 +172,21 @@ const practiceKind = await (await call('/api/round', { mode: 'practice', day: 0,
 if (practiceKind.domainId !== 'emoji') fail('api practice domain', `wanted emoji, got ${practiceKind.domainId}`);
 if (practiceKind.rule || practiceKind.detail || practiceKind.trapName) fail('api practice domain', 'practice round leaked the rule');
 
+/* Black Box API */
+const box = await (await call('/api/box/round?day=1&mode=daily')).json();
+if (box.game !== 'box' || !box.given || box.given.length !== 3) fail('api box', 'day 1 box round incomplete');
+if (box.name || box.detail || box.fnIdx != null) fail('api box', 'box round leaked the function');
+const bp = B.dailyBox(1); const bfn = B.BoxDomains[bp.domainId].funcs[bp.fnIdx];
+const ran = await (await call('/api/box/run', { mode: 'daily', day: 1, input: bp.domainId === 'numbers' ? 123 : 'zebra', tested: [] })).json();
+if (!B.sameOut(ran.output, B.run(B.BoxDomains[bp.domainId], bfn, ran.input))) fail('api box run', 'run disagrees with the function');
+const bprove = await (await call('/api/box/prove', { mode: 'daily', day: 1, tested: [], proveRound: 0 })).json();
+if (!bprove.items || bprove.items.length !== 4 || bprove.items.some((p) => 'output' in p)) fail('api box prove', 'prove items wrong or leaked');
+const bexpected = B.buildProve(B.BoxDomains[bp.domainId], bfn, new Set(box.given.map((g) => g.input)), B.mulberry32(bp.seed + 7919));
+const bwrong = await (await call('/api/box/check', { mode: 'daily', day: 1, tested: [], proveRound: 0, answers: bprove.items.map((p) => ({ input: p.input, output: 'x' })) })).json();
+if (bwrong.allRight || bwrong.reveal) fail('api box check', 'wrong outputs should not pass');
+const bright = await (await call('/api/box/check', { mode: 'daily', day: 1, tested: [], proveRound: 0, answers: bexpected.map((p) => ({ input: p.input, output: p.output })) })).json();
+if (!bright.allRight || !bright.reveal || bright.reveal.name !== bfn.name) fail('api box check', 'correct outputs were rejected');
+
 if (starsFor({ result: 'gaveup', strokes: 0, par: 4 }) !== 0) fail('stars', 'give up should be 0');
 if (starsFor({ result: 'solved', strokes: 4, par: 4 }) !== 3) fail('stars', 'at par should be 3');
 if (starsFor({ result: 'solved', strokes: 6, par: 4 }) !== 2) fail('stars', 'par+2 should be 2');
@@ -136,9 +198,13 @@ if (alreadyOnBoard([], [{ item: 'cat', kind: 'test' }], 'cat') !== true) fail('d
 if (proveReady([{ item: 1 }, { item: 2 }], { 1: true }) !== false) fail('prove', 'incomplete answers should not be ready');
 if (proveReady([{ item: 1 }, { item: 2 }], { 1: true, 2: false }) !== true) fail('prove', 'complete answers should be ready');
 if (needAnotherLook(2) !== 'Two need another look.') fail('copy', 'wrong-count copy mismatch');
-const share = shareText({ mode: 'daily', day: 0, strokes: 4, stars: 2, result: 'solved' });
-if (!share.startsWith('Deductidle #1') || !share.includes('4 tests · 6/6')) fail('share', `unexpected share text: ${share}`);
-if (/\d{2,}/.test(share.split('\n')[1].replace('6/6', '').replace('4 tests', ''))) fail('share', 'share text leaked extra numbers');
+const share = shareText({ game: 'sort', mode: 'daily', day: 0, domainName: 'Numbers', levelName: 'Hard', stars: 2, result: 'solved', log: [{ in: true, kind: 'test' }, { in: false, kind: 'test' }], proveFails: 1 });
+const shareLines = share.split('\n');
+if (!shareLines[0].startsWith('Deductidle #1') || !shareLines[0].includes('★★☆')) fail('share', `unexpected share head: ${shareLines[0]}`);
+if (shareLines[1] !== '🟩⬛ ❌✅') fail('share', `unexpected share row: ${shareLines[1]}`);
+if (!/^https:\/\//.test(shareLines[2] || '')) fail('share', 'share text has no link');
+const boxShare = shareText({ game: 'box', mode: 'daily', day: 2, domainName: 'Words', stars: 3, result: 'solved', log: [{ kind: 'test' }, { kind: 'test' }, { kind: 'test' }], proveFails: 0 });
+if (!boxShare.includes('Black box') || !boxShare.includes('🟦🟦🟦 ✅')) fail('share', `unexpected box share: ${boxShare}`);
 
 console.log(`${boards} boards checked, ${bad} violation${bad === 1 ? '' : 's'}`);
 process.exit(bad ? 1 : 0);

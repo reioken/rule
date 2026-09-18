@@ -108,6 +108,9 @@ const firstHalf = (ch) => letterNo(ch) <= 13;
 const evenLetter = (ch) => letterNo(ch) % 2 === 0;
 const STRAIGHT = new Set([...'aefhiklmntvwxyz']);
 const straight = (ch) => STRAIGHT.has(ch);
+const VOWEL_L = new Set([...'aeiou']);
+const LOOPED = new Set([...'abdopqr']); // capitals with an enclosed space
+const TALL = new Set([...'bdfhklt']);   // lowercase ascenders
 
 const LETTERS_D = {
   ...lettersView,
@@ -117,6 +120,9 @@ const LETTERS_D = {
     { id: 'straight', rule: 'Made of straight lines', detail: 'Drawn as a capital, every stroke is straight. A, E, F, H, I, K, L, M, N, T, V, W, X, Y, Z.', test: straight, trap: firstHalf, trapName: 'in the first half of the alphabet', par: 4 },
     { id: 'second-half', rule: 'In the second half of the alphabet', detail: 'N through Z. A through M are out.', test: (ch) => !firstHalf(ch), trap: straight, trapName: 'made of straight lines', par: 4 },
     { id: 'even-place', rule: 'An even place in the alphabet', detail: 'B, D, F, H, J, L, N, P, R, T, V, X or Z. A is 1st.', test: evenLetter, trap: firstHalf, trapName: 'in the first half of the alphabet', par: 3 },
+    { id: 'vowel', rule: 'A vowel', detail: 'A, E, I, O or U.', test: (ch) => VOWEL_L.has(ch), trap: firstHalf, trapName: 'in the first half of the alphabet', par: 3 },
+    { id: 'looped', rule: 'Has an enclosed space', detail: 'As a capital, the letter traps some paper inside it: A, B, D, O, P, Q, R.', test: (ch) => LOOPED.has(ch), trap: (ch) => !straight(ch), trapName: 'has a curve', par: 4 },
+    { id: 'tall', rule: 'Tall in lowercase', detail: 'b, d, f, h, k, l, t reach above the others.', test: (ch) => TALL.has(ch), trap: (ch) => !VOWEL_L.has(ch), trapName: 'a consonant', par: 4 },
   ],
 };
 
@@ -131,9 +137,10 @@ const EMOJI_TAGS = {
   '🍋': ['food'], '🍇': ['food'], '🍕': ['food'], '🍔': ['food'], '🍪': ['food'], '🥕': ['food'],
   '🍩': ['food'], '🌮': ['food'], '🥦': ['food'], '🧀': ['food'],
   '🚗': ['vehicle'], '🚕': ['vehicle'], '🚌': ['vehicle'], '🚲': ['vehicle'],
-  '✈️': ['vehicle'], '🚀': ['vehicle'], '🚢': ['vehicle'], '🚂': ['vehicle'],
-  '❤️': ['red'], '🌹': ['red'], '🎈': ['red'], '🔥': ['red'], '📌': ['red'], '🛑': ['red'],
-  '⭐': [], '🌙': [], '☀️': [], '🌲': [], '💎': [], '👑': [], '⚽': [], '🎵': [], '📚': [], '🔑': [],
+  '✈️': ['vehicle', 'sky'], '🚀': ['vehicle', 'sky'], '🚢': ['vehicle'], '🚂': ['vehicle'], '🚁': ['vehicle', 'sky'], '🚜': ['vehicle'],
+  '❤️': ['red'], '🌹': ['red', 'plant'], '🎈': ['red', 'sky'], '🔥': ['red'], '📌': ['red'], '🛑': ['red'],
+  '⭐': ['sky'], '🌙': ['sky'], '☀️': ['sky'], '🌲': ['plant'], '💎': [], '👑': [], '⚽': [], '🎵': [], '📚': [], '🔑': [],
+  '🦋': ['animal', 'sky'], '🐝': ['animal', 'sky'],
 };
 const tagged = (e, t) => (EMOJI_TAGS[e] || []).includes(t);
 
@@ -145,6 +152,9 @@ const EMOJI = {
     { id: 'food', rule: 'Food', detail: 'Something you eat. Colour does not matter.', test: (e) => tagged(e, 'food'), trap: (e) => tagged(e, 'red'), trapName: 'red things', par: 4 },
     { id: 'face', rule: 'A face', detail: 'A face looks back at you, animal or smiley.', test: (e) => tagged(e, 'face'), trap: (e) => tagged(e, 'animal'), trapName: 'an animal', par: 3 },
     { id: 'red', rule: 'A red emoji', detail: 'The emoji is red, or mostly red.', test: (e) => tagged(e, 'red'), trap: (e) => tagged(e, 'food'), trapName: 'food', par: 4 },
+    { id: 'vehicle', rule: 'Something that moves you', detail: 'Cars, bikes, planes, boats, trains.', test: (e) => tagged(e, 'vehicle'), trap: (e) => !tagged(e, 'animal') && !tagged(e, 'face'), trapName: 'not alive', par: 3 },
+    { id: 'alive', rule: 'Alive', detail: 'Animals and plants. Objects, food and smileys are out.', test: (e) => tagged(e, 'animal') || tagged(e, 'plant'), trap: (e) => !tagged(e, 'face') && !tagged(e, 'food') && !tagged(e, 'vehicle'), trapName: 'neither food, a face nor a vehicle', par: 4 },
+    { id: 'sky', rule: 'Found in the sky', detail: 'Things that fly or hang up there.', test: (e) => tagged(e, 'sky'), trap: (e) => !tagged(e, 'face') && !tagged(e, 'food'), trapName: 'neither food nor a face', par: 4 },
   ],
 };
 
@@ -152,6 +162,8 @@ const WARM = new Set(['red', 'crimson', 'orange', 'gold', 'yellow', 'peach', 'co
 const DARK = new Set(['crimson', 'maroon', 'rust', 'wine', 'umber', 'brown', 'olive', 'navy', 'indigo', 'black', 'charcoal']);
 const BLUEISH = new Set(['teal', 'cyan', 'turquoise', 'sky', 'blue', 'navy', 'indigo']);
 const SHORT = (id) => id.length <= 4;
+const LIGHT = new Set(['peach', 'pink', 'beige', 'ivory', 'lime', 'mint', 'cyan', 'sky', 'lavender', 'white', 'yellow', 'gold']);
+const GREENISH = new Set(['lime', 'green', 'olive', 'mint', 'teal', 'turquoise']);
 
 const COLORS_D = {
   ...colorsView,
@@ -162,6 +174,9 @@ const COLORS_D = {
     { id: 'blueish', rule: 'A blue-green', detail: 'Teal, cyan, turquoise, sky, blue, navy or indigo.', test: (id) => BLUEISH.has(id), trap: SHORT, trapName: 'a name with four letters or fewer', par: 4 },
     { id: 'short-name', rule: 'A short name', detail: 'The colour\'s name has four letters or fewer.', test: SHORT, trap: (id) => BLUEISH.has(id), trapName: 'a blue-green', par: 4 },
     { id: 'cool', rule: 'A cool colour', detail: 'Greens, blues, purples, greys. Warm reds and yellows are out.', test: (id) => !WARM.has(id), trap: (id) => DARK.has(id), trapName: 'a dark colour', par: 4 },
+    { id: 'light', rule: 'A light colour', detail: 'Pale and pastel shades. Anything deep or saturated is out.', test: (id) => LIGHT.has(id), trap: (id) => !DARK.has(id), trapName: 'not dark', par: 4 },
+    { id: 'greenish', rule: 'Has green in it', detail: 'Lime, green, olive, mint, teal, turquoise.', test: (id) => GREENISH.has(id), trap: (id) => !WARM.has(id), trapName: 'a cool colour', par: 4 },
+    { id: 'name-e', rule: 'The name has an E', detail: 'Ignore the colour, read the name.', test: (id) => id.includes('e'), trap: (id) => id.length >= 5, trapName: 'a long name', par: 5 },
   ],
 };
 
@@ -171,6 +186,10 @@ const isSpade = (k) => cardParts(k).suit === 'S';
 const isHeart = (k) => cardParts(k).suit === 'H';
 const evenRank = (k) => cardParts(k).rank % 2 === 0;
 const highRank = (k) => cardParts(k).rank >= 8;
+const PRIMES_R = new Set([2, 3, 5, 7, 11, 13]);
+const primeRank = (k) => PRIMES_R.has(cardParts(k).rank);
+const isClub = (k) => cardParts(k).suit === 'C';
+const lowRank = (k) => cardParts(k).rank <= 5;
 
 const CARDS = {
   ...cardsView,
@@ -186,6 +205,10 @@ const CARDS = {
     { id: 'heart', rule: 'A heart', detail: 'Only hearts.', test: isHeart, trap: evenRank, trapName: 'an even rank', par: 3 },
     { id: 'even-rank', rule: 'An even rank', detail: '2, 4, 6, 8, 10 or queen. Ace is 1.', test: evenRank, trap: isRedSuit, trapName: 'a red card', par: 4 },
     { id: 'high', rule: '8 or higher', detail: '8, 9, 10, jack, queen or king. Ace is low.', test: highRank, trap: isRedSuit, trapName: 'a red card', par: 4 },
+    { id: 'black', rule: 'A black suit', detail: 'Spades and clubs. Hearts and diamonds are out.', test: (k) => !isRedSuit(k), trap: (k) => !isFace(k), trapName: 'not a face card', par: 3 },
+    { id: 'club', rule: 'A club', detail: 'Only clubs.', test: isClub, trap: lowRank, trapName: '5 or lower', par: 3 },
+    { id: 'prime', rule: 'A prime rank', detail: '2, 3, 5, 7, jack (11) or king (13). Ace is 1, which is not prime.', test: primeRank, trap: (k) => !evenRank(k), trapName: 'an odd rank', par: 5 },
+    { id: 'low', rule: '5 or lower', detail: 'Ace through 5. Ace is low.', test: lowRank, trap: (k) => !isRedSuit(k), trapName: 'a black card', par: 4 },
   ],
 };
 
