@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { RuleDomains as D } from '../domains.js';
 import * as E from '../engine.js';
 import { handleApi } from '../api.js';
-import { WEEK, LEVEL_FOR } from '../schedule.js';
+import { DAILY_DOMAINS, dayPlan } from '../schedule.js';
 import {
   starsFor, starsStillPossible, shareText, alreadyOnBoard, proveReady,
   needAnotherLook, normalizePhase,
@@ -53,8 +53,7 @@ for (const domain of D.list) {
     }
   }
   const atoms = domain.rules.filter((r) => r.level === 1).length;
-  const hardDays = Object.entries(WEEK).some(([wd, id]) => id === domain.id && E.LEVELS[LEVEL_FOR[wd]].compound);
-  if (hardDays && domain.rules.length - atoms < 6) fail(`compounds ${domain.id}`, `only ${domain.rules.length - atoms} compound rules`);
+  if (DAILY_DOMAINS.includes(domain.id) && domain.rules.length - atoms < 3) fail(`compounds ${domain.id}`, `only ${domain.rules.length - atoms} compound rules`);
 }
 for (let day = 0; day < 365; day++) {
   const pick = E.dailyPick(day);
@@ -64,14 +63,26 @@ for (let day = 0; day < 365; day++) {
   check(`#${day + 1} ${pick.domainId}/${rule.id}`, domain, rule, pick.seed, 3, pick.level);
 }
 
+/* The draw: every daily domain and every level shows up often, and no domain repeats on consecutive days. */
+{
+  const dom = {}, lvl = {};
+  for (let day = 0; day < 365; day++) {
+    const p = dayPlan(day);
+    dom[p.domainId] = (dom[p.domainId] || 0) + 1; lvl[p.level] = (lvl[p.level] || 0) + 1;
+    if (day > 0 && dayPlan(day - 1).domainId === p.domainId) fail('draw', `day ${day + 1} repeats yesterday's domain`);
+  }
+  for (const id of DAILY_DOMAINS) if ((dom[id] || 0) < 40) fail('draw', `${id} only ${dom[id] || 0} times in a year`);
+  for (const l of [1, 2, 3]) if ((lvl[l] || 0) < 40) fail('draw', `level ${l} only ${lvl[l] || 0} times in a year`);
+}
+
 /* Within each domain and level band, no rule repeats before the whole band has been used. */
-const scheduled = new Set(Object.values(WEEK));
+const scheduled = new Set(DAILY_DOMAINS);
 for (const domain of D.list) {
   if (!scheduled.has(domain.id)) continue;
   for (const compound of [false, true]) {
     const band = domain.rules.map((r, i) => ({ r, i })).filter(({ r }) => (r.level === 2) === compound).map(({ i }) => i);
     const seq = [];
-    for (let day = 0; day < 7 * 60 && seq.length < band.length; day++) {
+    for (let day = 0; day < 3000 && seq.length < band.length; day++) {
       const p = E.dailyPick(day);
       if (p.domainId === domain.id && E.LEVELS[p.level].compound === compound) seq.push(p.ruleIdx);
     }

@@ -1,6 +1,6 @@
 /* Deductidle — game loop. Vanilla JS module. Rules stay on the server. */
 import { RuleCatalog as D } from './catalog.js';
-import { dayIndex, domainFor, WEEK, LEVEL_FOR, LAUNCH_UTC } from './schedule.js';
+import { dayIndex, domainFor, levelFor, LAUNCH_UTC } from './schedule.js';
 import {
   normalizePhase, starsFor, starsStillPossible, starGlyphs, shareText, SHARE_URL,
   alreadyOnBoard, proveReady, needAnotherLook, evidenceLede, inputHint, parseMessage,
@@ -611,14 +611,9 @@ function renderStatsDialog() {
 
 /* ---------- below the game ---------- */
 function renderBelow() {
-  const list = [];
-  const wd = dateOf(today).getUTCDay();
-  for (let i = 0; i < 7; i++) {
-    const w = (1 + i) % 7; // Monday first
-    const lvl = LEVEL_FOR[w];
-    list.push(`<li class="${w === wd ? 'today' : ''}"><b>${DAY_NAMES[w]}</b><span>${D[WEEK[w]].name}</span><span class="lvl l${lvl}">${LEVEL_NAMES[lvl]}</span></li>`);
-  }
-  $('weekList').innerHTML = list.join('');
+  const lvlToday = levelFor(today);
+  const rows = [[1, 'One simple rule.'], [2, 'Two simple rules joined by and, or, or unless. You are told which.'], [3, 'Two simple rules joined. The join is yours to work out.']];
+  $('weekList').innerHTML = rows.map(([l, text]) => `<li class="${l === lvlToday ? 'today' : ''}"><span class="lvl l${l}">${LEVEL_NAMES[l]}</span><span>${text}</span><b>${l === lvlToday ? 'today' : ''}</b></li>`).join('');
   if (today >= 1) {
     Promise.all([api('/api/reveal', { mode: 'daily', day: today - 1 }), api(`/api/stats?day=${today - 1}`)]).then(([rev, st]) => {
       $('yesterdayRule').textContent = rev.rule;

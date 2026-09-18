@@ -3,9 +3,9 @@
    1. compound rules (A and B, A or B, A unless B) built from each domain's atoms, with the join shown or hidden,
    2. "ugly" examples: of many candidate sets, the one that keeps the most wrong rules alive. */
 import { RuleDomains } from './domains.js';
-import { LAUNCH_UTC, domainFor, LEVEL_FOR } from './schedule.js';
+import { LAUNCH_UTC, domainFor, levelFor } from './schedule.js';
 
-export { LAUNCH_UTC, domainFor, dayIndex } from './schedule.js';
+export { LAUNCH_UTC, domainFor, levelFor, dayIndex } from './schedule.js';
 
 export function mulberry32(seed) {
   let a = seed >>> 0;
@@ -186,9 +186,6 @@ function strideFor(len) {
   let stride = 3;
   while (len > 1 && gcd(stride, len) !== 1) stride++;
   return stride;
-}
-export function levelFor(day) {
-  return LEVEL_FOR[new Date(LAUNCH_UTC + day * 86400000).getUTCDay()] || 1;
 }
 export function dailyPick(day) {
   const domainId = domainFor(day);
