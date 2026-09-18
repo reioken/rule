@@ -184,8 +184,10 @@ function renderPhaseHead() {
   $('meta').innerHTML = sortMeta();
   if (S.phase === 'explore') {
     $('headline').textContent = 'What’s the rule?';
-    if (S.joined) {
-      $('lede').innerHTML = `${evidenceLede(S.evidence.length)} Today it is <b>two simple rules</b> joined by <span class="joiner">${S.joined}</span>${S.evidence.length <= 4 ? ', and you get only four examples' : ''}.`;
+    if (S.joined === 'hidden') {
+      $('lede').innerHTML = `${evidenceLede(S.evidence.length)} Today it is <b>two simple rules</b> joined by <span class="joiner">and</span> <span class="joiner">or</span> or <span class="joiner">unless</span>. Which one is part of the puzzle.`;
+    } else if (S.joined) {
+      $('lede').innerHTML = `${evidenceLede(S.evidence.length)} Today it is <b>two simple rules</b> joined by <span class="joiner">${S.joined}</span>.`;
     } else $('lede').textContent = `${evidenceLede(S.evidence.length)} Test anything when you have a theory.`;
   } else if (S.phase === 'prove') {
     $('headline').textContent = 'Sort all six.';

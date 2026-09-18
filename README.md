@@ -6,7 +6,7 @@ A few things are already sorted through the gate by a secret rule. Send your own
 
 - Every test costs one. Finish within par for three stars.
 - Every rule has a **trap**: a plausible wrong rule that fits the opening examples. The prove items are chosen so the trap can't pass.
-- **Difficulty by weekday.** Monday and Wednesday: one rule, six examples. Tuesday, Thursday, Friday: two rules joined by and, or, or except. Weekends: two rules and only four examples.
+- **Same board every day.** Six examples, three in and three out. Difficulty lives in the rule: Monday and Wednesday are one simple rule. Tuesday, Thursday and Friday join two rules with and, or, or unless, and say which. Weekends join two rules and hide the join.
 - **Ugly examples.** Of many candidate opening sets, the engine keeps the one that leaves the most wrong hypotheses alive, so the obvious pattern is rarely the rule.
 - **Hypothesis counter.** After every test the dock shows how many rules from the library still fit the board.
 - **Solve rates.** With a KV namespace bound as `STATS`, results are counted per day and the reveal shows how many players solved it. Without it the game runs unchanged.

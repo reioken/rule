@@ -53,7 +53,7 @@ function publicMeta(round) {
     level: round.level,
     levelName: E.LEVELS[round.level].name,
     par: rule.par,
-    ...(rule.level === 2 ? { joined: rule.word } : {}),
+    ...(rule.level === 2 ? { joined: E.LEVELS[round.level].showJoin ? rule.word : 'hidden' } : {}),
     evidence,
     ...(round.mode === 'practice' ? { ruleIdx: round.ruleIdx } : {}),
   };

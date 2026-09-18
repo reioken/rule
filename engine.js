@@ -1,8 +1,7 @@
 /* Deductidle — generic round generator. Works on any domain's pool + rule. Server-only.
-   Difficulty comes from three places:
-   1. compound rules (A and B, A or B, A except B) built from each domain's atoms,
-   2. fewer opening examples (6 on most days, 4 on weekends),
-   3. "ugly" examples: of many candidate sets, the one that keeps the most wrong rules alive. */
+   The board is always six examples, three in and three out. Difficulty comes from the rule:
+   1. compound rules (A and B, A or B, A unless B) built from each domain's atoms, with the join shown or hidden,
+   2. "ugly" examples: of many candidate sets, the one that keeps the most wrong rules alive. */
 import { RuleDomains } from './domains.js';
 import { LAUNCH_UTC, domainFor, LEVEL_FOR } from './schedule.js';
 
@@ -104,10 +103,12 @@ if (!RuleDomains.__compounded) {
 }
 
 /* ---------- levels ---------- */
+/* Same board every day: six examples, three in and three out. Difficulty lives in the rule.
+   1: one simple rule. 2: two rules joined, and you are told the join. 3: two rules joined, join hidden. */
 export const LEVELS = {
-  1: { evidence: 6, compound: false, name: 'Easy' },
-  2: { evidence: 6, compound: true, name: 'Hard' },
-  3: { evidence: 4, compound: true, name: 'Brutal' },
+  1: { evidence: 6, compound: false, showJoin: false, name: 'Easy' },
+  2: { evidence: 6, compound: true, showJoin: true, name: 'Hard' },
+  3: { evidence: 6, compound: true, showJoin: false, name: 'Brutal' },
 };
 export const levelOf = (rule) => ((rule.level || 1) === 1 ? 1 : 2);
 export const evidenceCountFor = (rule, level) => LEVELS[level || levelOf(rule)].evidence;
